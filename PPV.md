@@ -2,7 +2,7 @@
 
 The measurement of the positive predictive value recomputed by Bayes' theorem against the one observed, across transfers between hospitals, care settings and corpora, is part of the article [REPORT.md](REPORT.md): sections 2.5 and 3.1 for the measurement, 3.5 for the predictions that need no diagnosis, and 3.6 for the three repairs judged on net benefit. The methods in statistical terms are in Part 3 of [SUPPLEMENT.md](SUPPLEMENT.md).
 
-## Local labels needed to correct an ECG model's positive predictive value at a new hospital, and the cost in sensitivity
+## Correcting an ECG model's positive predictive value at an external site with few local labels
 
 ### Objective
 
