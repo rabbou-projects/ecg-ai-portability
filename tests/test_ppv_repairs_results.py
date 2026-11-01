@@ -206,6 +206,10 @@ def pts(x: float) -> str:
     return f"{100 * x:.1f}"
 
 
+def pct(x: float) -> str:
+    return f"{100 * x:.0f}%"
+
+
 def ppv_md_figures(result: dict[str, Any]) -> list[str]:
     """Every figure PPV.md prints, formatted from the file."""
     s = result["summary"]
@@ -223,6 +227,15 @@ def ppv_md_figures(result: dict[str, Any]) -> list[str]:
         out.append(f"{at[100]['certified_share_threshold_exists']:.3f}")
         out.append(f"{s[h]['selection']['mean_fdp']:.2f}")
         out.append(f"{s[h]['selection']['mean_q']:.2f}")
+        out.append(pct(s[h]["prior"]["sensitivity"]))
+        out.append(pct(s[h]["selection"]["sensitivity"]))
+        out.append(pct(at[100]["sensitivity"]["certified"]))
+        for n in (100, 400):
+            out.append(pct(at[n]["sensitivity"]["resampled"]))
+        # PPV.md: recalibration keeps the source threshold, so its sensitivity is repair 1's.
+        assert {pct(b["sensitivity"]["recalibrated"]) for b in at.values()} == {
+            pct(prior["sensitivity"])
+        }, h
     for h in MAIN[1:]:
         upper = result["falsifiers"]["label_free_outside_columbia"]["upper_bounds"][h]
         out.append(f"{pts(upper)} points")
