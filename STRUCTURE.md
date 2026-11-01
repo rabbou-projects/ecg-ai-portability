@@ -1,22 +1,43 @@
-# Label-free covariate-shift weighting of conformal thresholds for structural heart disease across care settings at Columbia
+# Weighted conformal thresholds for structural heart disease, transferred from inpatients to outpatients without outpatient diagnoses
 
-At Columbia, a threshold set to detect 90% of structural heart disease (SHD) among inpatients detects 71.6% of outpatient cases for the study's trained ResNet ([README](README.md)). Weighted conformal prediction (Tibshirani et al., arXiv:1904.06019) can restore coverage without target labels when the probability of disease given the tracing, P(Y|X), is the same in both populations. Whether it is the same between care settings of one hospital has not been measured for any ECG model of structural heart disease. We reweighted the per-label conformal threshold of seven models on EchoNext with weights estimated from unlabelled outpatients, on three covariate sets, and judged the repair against a decision rule fixed before any result was read. Weighting on a 1,024-dimensional ECG embedding brings composite sensitivity among outpatients from 71.6% to 78.6% under the single threshold to 87.1% to 89.7% across the seven models, against 72.7% to 81.5% when weighting on age and sex. The pre-specified criterion is not met by any of them: the lower Wilson bound at the effective sample size stays below 85%. Fine-tuning ECGFounder end to end on the Mac's GPU, three seeds, leaves composite sensitivity among outpatients at 72.0% to 75.6%, so a better-trained encoder does not halve the loss either.
+An ECG model for structural heart disease (SHD) flags a patient when its score exceeds a threshold. At Columbia, the threshold set to detect 90% of SHD among inpatients detects 71.6% of outpatient cases for the study's trained ResNet ([README](README.md)). Re-setting the threshold for outpatients normally requires outpatients whose echocardiogram is known. This study asks whether it can be re-set from the outpatients' ECGs alone.
+
+The threshold is a conformal threshold: a cut-off on the model's score, chosen on a calibration sample so that a stated share of its cases, here 90%, scores above it. Weighted conformal prediction (Tibshirani et al., arXiv:1904.06019) re-sets that cut-off for a new population by giving more weight to the calibration inpatients whose ECGs resemble the new population's. The method needs no diagnosis in the new population. It assumes that an outpatient and an inpatient with the same ECG have the same probability of SHD. Whether that assumption holds between care settings of one hospital has not been measured for any ECG model of SHD.
+
+The study tests it on EchoNext with seven models and three descriptions of each patient: age and sex; seven standard ECG measurements; and an embedding, the 1,024 numbers that a pre-trained network, ECGFounder, computes from each tracing. The criterion for success was fixed before any result was read.
+
+Weighting on age and sex changes little: outpatient sensitivity is 72.7% to 81.5% across the seven models, against 71.6% to 78.6% at the inpatient threshold. Weighting on the embedding raises it to 87.1% to 89.7%. No model meets the pre-specified criterion, which requires the lower bound of the 95% interval to reach 85%. Fine-tuning ECGFounder on EchoNext, three times with different random seeds, leaves outpatient sensitivity at 72.0% to 75.6%. Re-setting the thresholds on 100 to 200 outpatients with known diagnoses reaches 90% on average for five of the seven models.
 
 ## Methods
 
 ### Participants and outcome
 
-EchoNext v1.1.1 (PhysioNet, restricted licence) holds 100,000 Columbia ECGs, each paired with a transthoracic echocardiogram within a year, eleven echocardiographic findings and their composite (SHD). The published splits are used unchanged: 72,475 training ECGs; 1,903 inpatient ECGs of the validation split for calibration; and, in the test split, 2,203 inpatients, 1,971 emergency patients and 1,059 outpatients, one ECG per patient, no patient in two roles (`ecs.echonext.transfer_cohorts` raises otherwise). The outpatient test cohort holds 271 composite cases. This is a retrospective study reported following TRIPOD+AI (Collins et al., BMJ 2024); no ECG, score or weight derived from EchoNext leaves the analysis machine (licence clause 3).
+EchoNext v1.1.1 (PhysioNet, restricted licence) holds 100,000 Columbia ECGs. Each is paired with a transthoracic echocardiogram within a year, which gives eleven findings and their composite, SHD. The published splits are used unchanged. Training uses 72,475 ECGs. Calibration uses the 1,903 inpatient ECGs of the validation split. The test split gives three target cohorts: 2,203 inpatients, 1,971 emergency patients and 1,059 outpatients, one ECG per patient. No patient appears in two roles (`ecs.echonext.transfer_cohorts` raises otherwise). The outpatient test cohort holds 271 cases of SHD. This is a retrospective study reported following TRIPOD+AI (Collins et al., BMJ 2024). No ECG, score or weight derived from EchoNext leaves the analysis machine (licence clause 3).
 
 ### Models
 
-Seven models. Four have scores the published study already holds: the study's ResNet trained on EchoNext; the same ResNet frozen at a seeded random initialisation with one logistic probe per label; ECGFounder (Net1D, 30.8 million parameters) frozen with the same probes; and the published EchoNext mini-model on its own weights. Arm A1 fine-tunes ECGFounder end to end (`scripts/echonext_finetune.py`): the published weights, a twelve-output head, AdamW at a learning rate of 1e-4 with weight decay 0.01 on a cosine schedule, batch 64, ten epochs, three seeds, the epoch chosen on the tenth of training patients the ResNet held out. It ran on the Apple M5 GPU at 46.5 ECGs per second under the repository's torch 2.2.2: 4.0, 2.4 and 2.4 hours of training for the three seeds, the first slowed by a concurrent CPU job; all three seeds chose epoch 2 (holdout mean AUROC 0.781, 0.780 and 0.779), after which the holdout AUROC fell while the training loss kept falling. The weights stay outside the repository, under `~/data/echonext-derived/models`, with their SHA-256 digests in the scores' records.
+Seven models are compared. Four come from the published study:
 
-### Weights without target labels
+- the study's ResNet, trained on EchoNext;
+- the same ResNet frozen at a seeded random initialisation, read by one logistic regression per finding (a probe), a negative control;
+- ECGFounder (Net1D, 30.8 million parameters), frozen and read by the same probes;
+- the published EchoNext mini-model, on its authors' weights.
 
-For each target care setting, a domain classifier separates the calibration inpatients from the unlabelled target ECGs: an L2 logistic regression on standardised covariates, its penalty chosen by inner five-fold cross-validation on log loss, its predictions cross-fitted over five folds. The weight w(x) is the classifier's odds rescaled by the cohort sizes, capped at the 99th centile of the calibration weights. Three covariate sets are compared: age and sex, the low reference, because P(Y|X) is not plausibly invariant given them alone; the seven ECG measurements of the distribution (sex, ventricular and atrial rates, PR, QRS and QTc intervals, age); and the frozen ECGFounder embedding. Under invariant P(Y|X), the density ratio between populations at a fixed diagnosis equals w(x) up to a constant, so each class's conformal quantile is weighted by w(x) alone and the constant cancels. The weights are shared by all models, so models differ by their scores only.
+The other three fine-tune ECGFounder end to end on EchoNext (arm A1, `scripts/echonext_finetune.py`). Training starts from the published weights with a twelve-output head. It uses AdamW at a learning rate of 1e-4, weight decay 0.01, a cosine schedule, batches of 64 and ten epochs, once for each of three seeds. The epoch kept is the one with the best mean AUROC on the tenth of training patients that the ResNet held out. All three seeds kept epoch 2 (holdout mean AUROC 0.781, 0.780 and 0.779); after it, the holdout AUROC fell while the training loss kept falling. Training ran on an Apple M5 GPU under the repository's torch 2.2.2, in 2.4 to 4.0 hours per seed. The weights stay outside the repository, under `~/data/echonext-derived/models`, with their SHA-256 digests in the scores' records.
 
-Domain classifier AUROC, cross-fitted, by target and covariate set:
+### Weights without outpatient diagnoses
+
+Each weight comes from a domain classifier, a model trained to tell calibration inpatients from the unlabelled ECGs of the target care setting. The more an inpatient's ECG resembles the target's, the larger its weight. The classifier is an L2-penalised logistic regression on standardised covariates. Its penalty is chosen by five-fold cross-validation on log loss, and each ECG's prediction comes from a model fitted without it (cross-fitting over five folds). The weight w(x) is the classifier's odds rescaled by the cohort sizes, capped at the 99th centile of the calibration weights. The weights are shared by all models, so the models differ by their scores only.
+
+Three sets of covariates are compared:
+
+- age and sex, a low reference, because the probability of SHD given age and sex alone is not plausibly the same across care settings;
+- the seven ECG measurements of the distribution: sex, ventricular and atrial rates, PR, QRS and QTc intervals, and age;
+- the frozen ECGFounder embedding.
+
+If two patients with the same ECG have the same probability of SHD in both settings, the ratio of outpatient to inpatient densities among cases equals w(x) up to a constant. Each class's conformal quantile is therefore weighted by w(x) alone, and the constant cancels.
+
+The AUROC of the domain classifier measures how far the target differs from the inpatients on each covariate set: 0.5 means no difference.
 
 <!-- table:domain -->
 | Target | age, sex | ECG measurements | embedding |
@@ -26,21 +47,27 @@ Domain classifier AUROC, cross-fitted, by target and covariate set:
 | outpatient | 0.576 | 0.728 | 0.836 |
 <!-- /table -->
 
-The inpatient row compares two draws of one population and is a negative control.
+The inpatient row compares two samples of one population and is a negative control.
 
 ### Pre-specified decision rules
 
-Fixed in the protocol of 16 October 2026 before any result was read. An anomaly is judged when it counts at least 50 cases among test outpatients; four do (LVEF at most 45%, 70 cases; LV wall thickness at least 13 mm, 146; moderate or greater aortic stenosis, 51; PASP at least 45 mmHg, 63). The repair holds when the composite's 95% Wilson interval lies within [85%, 95%] and a strict majority of judged anomalies clears 80% in a one-sided score test at 0.025 with Holm's correction, on the embedding covariate. Both are computed at the effective size, the smaller of the target case count and the Kish effective size of the calibration cases' weights, because the weighted threshold rests on those calibration cases. The fine-tuned arm halves the published loss when the upper bound of its composite sensitivity loss among outpatients, 90% minus the lower Wilson bound, is at most 9 points, for each of the three seeds.
+The rules were fixed in the protocol of 16 October 2026, before any result was read. A finding is judged when it counts at least 50 cases among test outpatients. Four do: LVEF at most 45% (70 cases), LV wall thickness at least 13 mm (146), moderate or greater aortic stenosis (51) and PASP at least 45 mmHg (63).
+
+The repair holds, with weights on the embedding, when two conditions are met. The 95% Wilson interval of composite sensitivity, a confidence interval for a proportion that stays valid in small samples, lies within [85%, 95%]. A strict majority of judged findings clears 80% sensitivity in a one-sided score test at 0.025, with Holm's correction for testing four findings at once.
+
+Both conditions are computed at the effective size. Weighting makes a few calibration cases count for many, and the Kish effective sample size is the number of equally weighted cases that the weighted sample is worth. The effective size is the smaller of that number and the target case count, because the weighted threshold rests on the calibration cases.
+
+The fine-tuned arm halves the published loss when, for each of the three seeds, the upper bound of its loss of composite sensitivity among outpatients is at most 9 points. That upper bound is 90% minus the lower Wilson bound.
 
 ### Calibration and selective prediction
 
-For each model, finding and care setting: calibration slope and calibration-in-the-large, the integrated calibration index (ICI; Austin and Steyerberg, Stat Med 2019, here with a Gaussian-kernel smoother on logit p in place of loess), and the Brier score. The decision is the flag at the calibration threshold that detects 90% of inpatient cases; confidence is the distance from that threshold on the logit scale. Abstaining on the least confident ECGs traces the risk-coverage curve, summarised by its generalised area (AUGRC; Traub et al., arXiv:2407.01032) and by the sensitivity kept when 80% of ECGs are retained. Intervals are 2.5th and 97.5th percentiles of 500 bootstrap draws of target ECGs, the threshold held fixed.
+For each model, finding and care setting, calibration is reported by the slope, calibration-in-the-large, the integrated calibration index (ICI, the mean absolute gap between predicted and observed risk; Austin and Steyerberg, Stat Med 2019, here with a Gaussian-kernel smoother on logit p in place of loess) and the Brier score. The decision is the flag at the threshold that detects 90% of inpatient cases. Confidence is the distance from that threshold on the logit scale. Setting aside the least confident ECGs traces a risk-coverage curve, summarised by its generalised area (AUGRC; Traub et al., arXiv:2407.01032) and by the sensitivity kept when 80% of ECGs are retained. Intervals are the 2.5th and 97.5th percentiles of 500 bootstrap draws of target ECGs, with the threshold held fixed.
 
 ## Results
 
 ### Composite sensitivity among outpatients
 
-Sensitivity with its 95% Wilson interval; for the weighted rules, the interval and n are at the effective size.
+Sensitivity with its 95% Wilson interval. For the weighted thresholds, the interval and n are at the effective size.
 
 <!-- table:composite -->
 | Arm | Single threshold | Weighted on age, sex | Weighted on ECG measurements | Weighted on embedding |
@@ -54,11 +81,11 @@ Sensitivity with its 95% Wilson interval; for the weighted rules, the interval a
 | ECGFounder fine-tuned, seed 2 | 75.6% (70.2%–80.4%) | 77.9% (72.5%–82.4%, n=271) | 81.2% (76.1%–85.4%, n=271) | 89.3% (84.3%–92.7%, n=213) |
 <!-- /table -->
 
-Weighting on age and sex moves sensitivity by 3 points at most, and weighting on the ECG measurements recovers part of it. Weighting on the embedding brings every model within a few points of 90%, with an effective size of 213 calibration cases out of the inpatient cohort's.
+Weighting on age and sex moves sensitivity by 3 points at most. Weighting on the ECG measurements recovers part of the loss. Weighting on the embedding brings every model within 3 points of 90%, with an effective size of 213 calibration cases.
 
-### Judged anomalies, weighted on the embedding
+### Judged findings, weighted on the embedding
 
-Sensitivity among outpatients, effective size, and the Holm-corrected test against 80%.
+Sensitivity among outpatients, the effective size, and the Holm-corrected test against 80%.
 
 <!-- table:anomalies -->
 | Arm | LVEF ≤ 45% | LV wall ≥ 13 mm | Aortic stenosis | PASP ≥ 45 mmHg | Repair |
@@ -72,9 +99,9 @@ Sensitivity among outpatients, effective size, and the Holm-corrected test again
 | ECGFounder fine-tuned, seed 2 | 92.9%, n=70, passes | 89.7%, n=101, passes | 100.0%, n=29, passes | 85.7%, n=63, fails | fails |
 <!-- /table -->
 
-### Per-label thresholds refitted on local labels
+### Per-label thresholds re-set on outpatient diagnoses
 
-Composite sensitivity on a held-out half of the outpatients when the per-label thresholds are refitted on n labelled outpatients drawn from the other half: mean and 10th to 90th percentile of 200 draws (the mean can fall outside that range when a tenth of the draws flag almost everyone). With 25 or 50 labels, few cases are drawn and the threshold often flags every ECG.
+Composite sensitivity on one half of the outpatients when the per-label thresholds are re-set on n outpatients with known diagnoses, drawn from the other half. The table gives the mean and the 10th to 90th percentile of 200 draws. The mean can fall outside that range when a tenth of the draws flag almost everyone. With 25 or 50 outpatients, few cases are drawn and the threshold often flags every ECG.
 
 <!-- table:ladder -->
 | Arm | 25 labels | 50 labels | 100 labels | 200 labels | 400 labels |
@@ -109,9 +136,9 @@ Composite sensitivity on a held-out half of the outpatients when the per-label t
 | ECGFounder fine-tuned, seed 2 | outpatient | 0.97 (0.83–1.12) | -0.39 (-0.56–-0.23) | 0.063 (0.045–0.084) | 0.136 (0.124–0.149) | 0.114 (0.101–0.128) | 79.6% (74.6%–84.9%) |
 <!-- /table -->
 
-Retaining the 80% most confident ECGs keeps more than 93% sensitivity among inpatients for every model, and between 76.3% and 81.3% among outpatients: the abstention rule set on inpatients does not set aside the outpatient cases the threshold misses.
+When the 80% most confident ECGs are kept, sensitivity stays above 93% among inpatients for every model, and lies between 76.3% and 81.3% among outpatients. The confidence set on inpatients does not set aside the outpatient cases that the threshold misses.
 
-### Arm A1, the loss of composite sensitivity among outpatients
+### Arm A1, fine-tuning and the loss among outpatients
 
 <!-- table:a1 -->
 | Arm | Outpatient sensitivity | Loss, points | Loss at most 9 points |
@@ -127,15 +154,17 @@ Retaining the 80% most confident ECGs keeps more than 93% sensitivity among inpa
 
 ## Discussion
 
-Falsifier A2 is not met for any of the seven models: weighting on the ECG embedding restores composite sensitivity among outpatients to 87.1% to 89.7%, but no model's lower Wilson bound at 213 effective cases reaches 85%. Falsifier A1 is not met either: fine-tuned ECGFounder loses between 14.4 and 18.0 points of composite sensitivity among outpatients across seeds, against the 18.4 of the trained ResNet, with upper bounds of 19.8 to 23.7 points against the 9 required. The result is compatible with P(Y|X) changing between care settings, or with an embedding that does not hold the covariates on which it changes; the bound of Han et al. (arXiv:2607.18088) on label-free class-conditional coverage is consistent with it and is not demonstrated by it. The size of the recovery from age and sex to the embedding suggests that most of the loss follows from a shift in ECG appearance rather than in demographics. Per-label thresholds refitted on 100 to 200 labelled outpatients reach the 90% target on average across draws for five of the seven models, at the cost of labelling outpatients.
+Weighting on the ECG embedding raises composite sensitivity among outpatients to 87.1% to 89.7%. For no model does the lower Wilson bound at 213 effective cases reach 85%, so the pre-specified criterion (A2) is not met. Fine-tuned ECGFounder loses 14.4 to 18.0 points of composite sensitivity among outpatients across seeds, against 18.4 for the trained ResNet. Its upper bounds of 19.8 to 23.7 points exceed the 9 required, so the second criterion (A1) is not met either.
+
+Two readings fit this result. The probability of SHD given the ECG may differ between care settings, or the embedding may not hold the features on which it differs. The bound of Han et al. (arXiv:2607.18088) on label-free coverage per class is consistent with the result but is not demonstrated by it. The recovery from age and sex to the embedding suggests that most of the loss comes from how outpatients' ECGs look, more than from their age and sex. Thresholds re-set on 100 to 200 outpatients with known diagnoses reach the 90% target on average for five of the seven models, at the cost of obtaining those diagnoses.
 
 ## Limits
 
-The audit of Han et al. on target labels, named in the protocol as a third reference, is not implemented; the refitted thresholds on local labels stand in as the labelled reference. The decision rule's effective size is our reading of the protocol's "calculé sur la taille effective". The weights use the frozen ECGFounder embedding for every model, including models that do not read it. The Columbia to Boston arm (A4) awaits credentialed access to MIMIC-IV-Echo; Otabor et al. (Eur Heart J Digit Health 2026, doi:10.1093/ehjdh/ztag147) already report the EchoNext mini-model's discrimination and recalibration in 45,878 MIMIC-IV patients, without conformal thresholds or care settings. TRIPOD+AI items not covered here: sample size justification, handling of missing data (none in the covariates used), and a model-updating protocol for deployment.
+The audit of Han et al. on target labels, named in the protocol as a third reference, is not implemented; the thresholds re-set on outpatient diagnoses stand in as the labelled reference. The effective size of the decision rule is our reading of the protocol's "calculé sur la taille effective". The weights use the frozen ECGFounder embedding for every model, including models that do not read it. The Columbia to Boston arm (A4) awaits credentialed access to MIMIC-IV-Echo. Otabor et al. (Eur Heart J Digit Health 2026, doi:10.1093/ehjdh/ztag147) already report the EchoNext mini-model's discrimination and recalibration in 45,878 MIMIC-IV patients, without conformal thresholds or care settings. Three TRIPOD+AI items are not covered: the sample size justification, the handling of missing data (none in the covariates used) and a model-updating protocol for deployment.
 
 ## Literature search
 
-Searched on 20 October 2026. arXiv API: "EchoNext AND conformal", 0 records; "EchoNext AND calibration", 1 (arXiv:2607.24553); "EchoNext", 6. medRxiv's search refused the request (HTTP 403); Europe PMC, which indexes medRxiv preprints: "EchoNext AND conformal", 0 records; "EchoNext AND calibration", 14, of which Otabor et al. above is the only external validation with recalibration. Colebank (arXiv:2605.22968) studies Bayesian uncertainty for triage on EchoNext, without conformal thresholds or care settings in its abstract.
+Searched on 20 October 2026. arXiv API: "EchoNext AND conformal", 0 records; "EchoNext AND calibration", 1 (arXiv:2607.24553); "EchoNext", 6. medRxiv's search refused the request (HTTP 403). Europe PMC, which indexes medRxiv preprints: "EchoNext AND conformal", 0 records; "EchoNext AND calibration", 14, of which Otabor et al. above is the only external validation with recalibration. Colebank (arXiv:2605.22968) studies Bayesian uncertainty for triage on EchoNext, without conformal thresholds or care settings in its abstract.
 
 ## Reproduce
 
