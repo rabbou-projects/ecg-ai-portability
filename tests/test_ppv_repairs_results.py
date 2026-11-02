@@ -240,6 +240,11 @@ def ppv_md_figures(result: dict[str, Any]) -> list[str]:
         upper = result["falsifiers"]["label_free_outside_columbia"]["upper_bounds"][h]
         out.append(f"{pts(upper)} points")
     out.append(f"{pts(s['control']['prior']['abs_error']['median'])} points")
+    # PPV.md: "12.2 to 93.3 points at the eight reserve sites"; the upper end carries the unit.
+    reserve = [
+        v["prior"]["abs_error"]["median"] for h, v in s.items() if h not in (*MAIN, "control")
+    ]
+    out.append(f"{pts(max(reserve))} points")
     control = s["control"]["prior"]["abs_error_true_prevalence"]["median"]
     out.append(f"{pts(control)} points")
     out.append(f"{pts(result['published_control_median_gap'])} points")
@@ -298,3 +303,123 @@ def test_ppv_md_opens_on_a_summary_with_its_findings(result: dict[str, Any]) -> 
     ]
     missing = [f for f in held if f not in summary]
     assert not missing, missing
+
+
+SITE_NAMES = {
+    "columbia": "Columbia",
+    "beth_israel": "Beth Israel",
+    "chongqing": "Chongqing",
+    "shandong": "Shandong",
+    "chapman_ningbo": "Chapman-Ningbo",
+    "cpsc": "CPSC",
+    "georgia": "Georgia",
+    "ptbxl": "PTB-XL",
+    "code15": "CODE-15%",
+    "code_test": "CODE test set",
+    "zzu": "ZZU",
+    "control": "In-distribution controls",
+}
+TABLE_BUDGET = 100
+
+
+def signed(x: float | None) -> str:
+    if x is None:
+        return "–"
+    return f"{x:.3f}".replace("-0.000", "0.000").replace("-", "−")
+
+
+def with_bounds(median: float, bounds: list[float] | None) -> str:
+    if bounds is None:
+        return pts(median)
+    return f"{pts(median)} ({pts(bounds[0])} to {pts(bounds[1])})"
+
+
+def error_table(result: dict[str, Any]) -> list[str]:
+    """Table 1 of PPV.md, one row per site, formatted from the file."""
+    rows = []
+    for h, name in SITE_NAMES.items():
+        s = result["summary"][h]
+        b = next(x for x in s["budgets"] if x["n"] == TABLE_BUDGET)
+        prior = s["prior"]
+        low = prior.get("median_abs_error_lower_2_5")
+        bounds = [low, prior["median_abs_error_upper_97_5"]] if low is not None else None
+        cells = [
+            name,
+            str(s["transfers"]),
+            f"{b['mean_cases_labelled']:.1f}",
+            with_bounds(prior["abs_error"]["median"], bounds),
+            with_bounds(
+                b["recalibrated_abs_error"]["median"], b["recalibrated_abs_error_median_bounds"]
+            ),
+            with_bounds(b["resampled_abs_error"]["median"], b["resampled_abs_error_median_bounds"]),
+            f"{b['resampled_share_flags_all']:.2f}",
+        ]
+        rows.append("| " + " | ".join(cells) + " |")
+    return rows
+
+
+def net_benefit_table(result: dict[str, Any]) -> list[str]:
+    """Table 2 of PPV.md, one row per site, formatted from the file.
+
+    Recalibration keeps the source threshold, so its net benefit is the prevalence
+    correction's and the two share a column.
+    """
+    rows = []
+    for h, name in SITE_NAMES.items():
+        s = result["summary"][h]
+        nb = next(x for x in s["budgets"] if x["n"] == TABLE_BUDGET)["net_benefit"]
+        assert nb["recalibrated"] == pytest.approx(s["prior"]["net_benefit"], abs=5e-4), h
+        cells = [
+            name,
+            signed(s["references"]["treat_all_net_benefit"]),
+            signed(s["references"]["own_cut_net_benefit"]),
+            signed(s["prior"]["net_benefit"]),
+            signed(nb["resampled"]),
+            signed(nb["certified"]),
+            signed(s["selection"]["net_benefit"]),
+        ]
+        rows.append("| " + " | ".join(cells) + " |")
+    return rows
+
+
+def test_ppv_md_tables_are_the_file_s(result: dict[str, Any]) -> None:
+    """Every row of Tables 1 and 2 is the file's, reserve sites and controls included."""
+    section = ppv_md_section()
+    missing = [row for row in error_table(result) + net_benefit_table(result) if row not in section]
+    assert not missing, missing
+
+
+def test_ppv_md_post_hoc_claims_are_the_file_s(result: dict[str, Any]) -> None:
+    """The prose under Tables 1 and 2: case counts, flag-everyone shares, net benefit gaps."""
+    s = result["summary"]
+    at = {h: next(b for b in s[h]["budgets"] if b["n"] == TABLE_BUDGET) for h in SITE_NAMES}
+    few = {h for h in SITE_NAMES if at[h]["mean_cases_labelled"] < 2}
+    assert few == {"shandong", "code15", "zzu"}
+    assert max(at[h]["mean_cases_labelled"] for h in SITE_NAMES) < 16
+    shares = [at[h]["resampled_share_flags_all"] for h in SITE_NAMES]
+    gap = {
+        h: at[h]["net_benefit"]["resampled"] - s[h]["references"]["treat_all_net_benefit"]
+        for h in SITE_NAMES
+    }
+    assert {h for h, g in gap.items() if abs(g) > 0.006} == {"ptbxl"}
+    assert all(
+        s[h]["prior"]["net_benefit"] > s[h]["references"]["treat_all_net_benefit"]
+        for h in SITE_NAMES
+    )
+    reserve = [
+        s[h]["prior"]["abs_error"]["median"] for h in SITE_NAMES if h not in (*MAIN, "control")
+    ]
+    section = ppv_md_section()
+    for phrase in (
+        f"{min(shares):.2f} to {max(shares):.2f} of draws",
+        f"where it was {abs(gap['ptbxl']):.3f} lower",
+        f"{pts(min(reserve))} to {pts(max(reserve))} points at the eight reserve sites",
+        ", ".join(f"{at[h]['mean_cases_labelled']:.1f}" for h in MAIN[:2])
+        + f" and {at['chongqing']['mean_cases_labelled']:.1f} cases",
+        ", ".join(f"{at[h]['resampled_share_flags_all']:.2f}" for h in MAIN[:2])
+        + f" and {at['chongqing']['resampled_share_flags_all']:.2f} of draws",
+        f"was {signed(at['columbia']['net_benefit']['resampled'])} at Columbia, against "
+        f"{signed(s['columbia']['references']['treat_all_net_benefit'])} for flagging every "
+        f"patient and {signed(s['columbia']['prior']['net_benefit'])} for recalibration",
+    ):
+        assert phrase in section, phrase

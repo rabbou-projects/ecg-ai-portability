@@ -6,7 +6,7 @@ The measurement of the positive predictive value recomputed by Bayes' theorem ag
 
 ### Summary
 
-A site adopting an ECG model receives a positive predictive value (PPV) measured in the developer's population, and in the article Bayes' theorem at the local prevalence did not reliably recover the PPV observed at other hospitals and care settings. How many local labels, patients in whom the site has confirmed the diagnosis, an update of the stated PPV requires, and what sensitivity it retains, has not been measured. We compared five updating methods in 105 transfers, each a model calibrated in one population and applied to another, at three external sites (Columbia, Beth Israel Deaconess and Chongqing), with label budgets of 25 to 400 patients and 200 draws per budget. Without local labels, a prevalence correction erred by a median of 13.1, 11.4 and 51.7 points. With 100 labels, logistic recalibration, which refits the intercept and slope of the model's logit to the local labels, or the intercept alone when the rarer class has fewer than ten events, erred by 3.1, 5.7 and 3.8 points, and a threshold refitted on half of the labels erred by 2.6, 2.2 and 3.5 points. The refitted threshold flagged 99%, 99% and 98% of cases, above the 90% it targeted: when a half held fewer than nine cases, no threshold could be placed and every patient was flagged. A threshold certified by exact binomial tests to hold the source PPV was found in 0.168, 0.251 and 0.010 of draws. These results suggest that 100 local labels allow a site to state its PPV within a few points, but not to place a threshold that holds the source PPV at the sensitivity fixed at the source.
+A site adopting an ECG model receives a positive predictive value (PPV) measured in the developer's population, and in the article Bayes' theorem at the local prevalence did not reliably recover the PPV observed at other hospitals and care settings. How many local labels, patients in whom the site has confirmed the diagnosis, an update of the stated PPV requires, and what sensitivity it retains, has not been measured. We compared five updating methods in 105 transfers, each a model calibrated in one population and applied to another, at three external sites (Columbia, Beth Israel Deaconess and Chongqing), with label budgets of 25 to 400 patients and 200 draws per budget. Without local labels, a prevalence correction erred by a median of 13.1, 11.4 and 51.7 points. With 100 labels, logistic recalibration, which refits the intercept and slope of the model's logit to the local labels, or the intercept alone when the rarer class has fewer than ten events, erred by 3.1, 5.7 and 3.8 points, and a threshold refitted on half of the labels erred by 2.6, 2.2 and 3.5 points. The refitted threshold flagged 99%, 99% and 98% of cases, above the 90% it targeted: 100 labels held a mean of 9.9, 13.2 and 14.8 cases, a half of fewer than nine cases cannot place a threshold, and every patient was flagged in 0.71, 0.73 and 0.71 of draws. Its net benefit at a threshold probability of 10%, true positives per patient minus false positives per patient weighted by the odds of that threshold, was 0.001 at Columbia, against −0.001 for flagging every patient and 0.044 for recalibration. A threshold certified by exact binomial tests to hold the source PPV was found in 0.168, 0.251 and 0.010 of draws. These results suggest that 100 local labels allow a site to state its PPV within a few points by recalibration, but that a threshold refitted on so few cases seldom separates cases from non-cases, and that no method placed a threshold holding the source PPV at the sensitivity fixed at the source.
 
 ### Objective
 
@@ -24,7 +24,7 @@ For each transfer, the target PPV v is the PPV attained in the source population
 4. threshold certification by Learn-then-Test (Angelopoulos et al.), in which thresholds from a grid fixed by the source scores were tested in fixed sequence from the highest down, each by an exact binomial test of PPV ≤ v at δ = 0.1, and the lowest threshold rejected before the first non-rejection was retained, so that a retained threshold has a PPV at or below v with probability at most δ; the stated PPV is v;
 5. weighted conformal selection without labels (Jin and Candès, arXiv:2307.09291, Algorithm 1 with deterministic pruning), which flags patients so that the false discovery rate, the expected proportion of false positives among flagged patients, stays below q = 1 − v; covariate-shift weights, the estimated ratio of target to source density of the model's score, adjust the source patients to the target population.
 
-Repairs 3 and 4 place thresholds by the conformal rule used at the source: among m cases, the threshold is the score of the case ranked ⌈(m + 1) × 0.9⌉ from the highest. Labels were sampled by patient at budgets of n = 25, 50, 100, 200 and 400, with 200 draws per budget; target patients not sampled formed the evaluation set, and repairs 1 and 5 used the whole target. The primary outcome was the absolute error, in percentage points, between the stated PPV and the PPV observed in the evaluation set. Sensitivity in the target was averaged over the draws in which a repair returned a threshold, then over the transfers of a site. Discrimination (AUROC) and net benefit at a threshold probability of 10%, true positives per patient minus false positives per patient weighted by the odds of that threshold, are reported per transfer in [`results/ppv_repairs.json`](results/ppv_repairs.json).
+Repairs 3 and 4 place thresholds by the conformal rule used at the source: among m cases, the threshold is the score of the case ranked ⌈(m + 1) × 0.9⌉ from the highest. Labels were sampled by patient at budgets of n = 25, 50, 100, 200 and 400, with 200 draws per budget; target patients not sampled formed the evaluation set, and repairs 1 and 5 used the whole target. The primary outcome was the absolute error, in percentage points, between the stated PPV and the PPV observed in the evaluation set. Sensitivity in the target was averaged over the draws in which a repair returned a threshold, then over the transfers of a site. Discrimination (AUROC) and net benefit at a threshold probability of 10% are reported per transfer in [`results/ppv_repairs.json`](results/ppv_repairs.json).
 
 ### Results
 
@@ -38,6 +38,46 @@ Certification preserved its guarantee but rarely returned a threshold. At n = 10
 
 Weighted conformal selection did not control the false discovery rate at Chongqing, where the mean false discovery proportion, the realised share of false positives among flagged patients, was 0.75 against a nominal level of 0.39; it was 0.64 against 0.77 at Columbia and 0.46 against 0.60 at Beth Israel. Its sensitivity was 64%, 68% and 86% at the three sites.
 
+### Post hoc analyses
+
+Three measures were added after the protocol was fixed, which named sensitivity and net benefit as secondary criteria: the mean number of cases in each labelled sample, the proportion of draws in which the refitted threshold flagged every patient, and two net-benefit references per transfer, flagging every patient and the target's own threshold for 90% sensitivity fitted on all its labels. The second reference is an operating point, not the highest attainable net benefit. Intervals on the pooled median errors are the 2.5th and 97.5th centiles of 200 bootstrap redraws, resampling with replacement the transfers of a site and then the draws within each transfer; the interval on the label-free median also resamples patients, as for the falsification criteria. Table 1 gives the errors and Table 2 the net benefit at n = 100 for every site, the secondary reserve and the in-distribution controls included.
+
+Table 1. Median absolute error of the stated PPV, in percentage points, with 95% intervals, at n = 100 labels.
+
+| Site | Transfers | Cases in 100 labels | Prevalence correction, no labels | Recalibration | Refitted threshold | Draws flagging every patient |
+|---|---|---|---|---|---|---|
+| Columbia | 76 | 9.9 | 13.1 (10.7 to 17.1) | 3.1 (2.9 to 3.5) | 2.6 (2.3 to 2.8) | 0.71 |
+| Beth Israel | 28 | 13.2 | 11.4 (6.7 to 30.3) | 5.7 (4.3 to 7.8) | 2.2 (1.8 to 2.3) | 0.73 |
+| Chongqing | 1 | 14.8 | 51.7 (50.4 to 52.8) | 3.8 (3.3 to 4.3) | 3.5 (3.1 to 4.3) | 0.71 |
+| Shandong | 25 | 1.6 | 22.3 | 4.9 (2.7 to 7.4) | 1.2 (1.0 to 1.3) | 0.48 |
+| Chapman-Ningbo | 28 | 5.0 | 17.3 | 5.1 (3.8 to 7.0) | 1.9 (1.8 to 2.2) | 0.66 |
+| CPSC | 28 | 10.3 | 12.2 | 5.1 (3.9 to 6.6) | 2.9 (2.5 to 3.2) | 0.74 |
+| Georgia | 28 | 6.9 | 20.0 | 5.6 (4.3 to 7.5) | 2.2 (2.1 to 2.5) | 0.84 |
+| PTB-XL | 28 | 15.4 | 14.8 | 4.7 (3.1 to 6.8) | 2.6 (2.6 to 2.7) | 0.68 |
+| CODE-15% | 24 | 1.7 | 93.3 | 3.3 (2.2 to 5.4) | 1.6 (1.5 to 1.6) | 0.58 |
+| CODE test set | 21 | 3.7 | 54.0 | 5.1 (3.5 to 8.0) | 1.9 (1.7 to 2.0) | 0.85 |
+| ZZU | 14 | 1.2 | 22.5 | 6.9 (2.5 to 13.0) | 1.3 (0.8 to 1.6) | 0.44 |
+| In-distribution controls | 77 | 12.4 | 2.4 | 3.0 (2.5 to 3.4) | 2.4 (2.2 to 2.8) | 0.65 |
+
+Table 2. Net benefit at a threshold probability of 10%, at n = 100 labels. Recalibration keeps the source threshold and shares the prevalence correction's column; the certified threshold is averaged over the draws in which one was found.
+
+| Site | Flag every patient | Target's own threshold | Prevalence correction and recalibration | Refitted threshold | Certified threshold | Weighted conformal selection |
+|---|---|---|---|---|---|---|
+| Columbia | −0.001 | 0.032 | 0.044 | 0.001 | 0.033 | 0.035 |
+| Beth Israel | 0.036 | 0.101 | 0.090 | 0.031 | 0.118 | 0.073 |
+| Chongqing | 0.055 | 0.081 | 0.085 | 0.060 | 0.050 | 0.084 |
+| Shandong | −0.093 | 0.003 | 0.006 | −0.093 | 0.009 | −0.014 |
+| Chapman-Ningbo | −0.055 | 0.013 | 0.026 | −0.052 | 0.027 | −0.001 |
+| CPSC | 0.004 | 0.057 | 0.055 | 0.009 | 0.067 | 0.048 |
+| Georgia | −0.034 | 0.037 | 0.037 | −0.032 | 0.034 | 0.005 |
+| PTB-XL | 0.061 | 0.124 | 0.088 | 0.052 | 0.120 | 0.047 |
+| CODE-15% | −0.092 | −0.077 | −0.041 | −0.092 | −0.036 | −0.032 |
+| CODE test set | −0.070 | −0.009 | 0.000 | −0.070 | −0.009 | −0.011 |
+| ZZU | −0.098 | −0.015 | −0.001 | −0.098 | 0.004 | −0.012 |
+| In-distribution controls | 0.027 | 0.070 | 0.069 | 0.027 | 0.051 | 0.049 |
+
+The labelled samples were small in cases: with 100 labels they held fewer than two cases on average at Shandong, CODE-15% and ZZU, and fewer than 16 at every other site. The refitted threshold flagged every patient in 0.44 to 0.85 of draws, and its net benefit stayed within 0.006 of that of flagging every patient at every site except PTB-XL, where it was 0.009 lower. Its small PPV error at these budgets therefore reflects a threshold that seldom discriminates, at which the stated and observed PPV both approach the prevalence. Recalibration, which keeps the source threshold, had a higher net benefit than flagging every patient at every site. Without labels, the prevalence correction erred by 12.2 to 93.3 points at the eight reserve sites, against 2.4 points in the controls.
+
 ### Falsification criteria
 
 The label-free correction would have been judged sufficient outside Columbia had the upper bound of the bootstrap interval of its median error, obtained by resampling transfers and patients with replacement, remained below two points at both Beth Israel and Chongqing. The bounds were 30.3 points and 52.8 points, which indicates that the need for local labels is not specific to Columbia; with a single transfer, the Chongqing bound reflects the resampling of patients only.
@@ -46,4 +86,4 @@ Certification would have been judged invalid under realistic sampling had its vi
 
 ### Limitations
 
-The comparison rests on three sites with correlated transfers within each, and the Beth Israel labels are machine statements. The observed PPV of each draw is estimated on a finite evaluation set, which adds sampling variance to the measured error and to the violation rate. Repair 5 uses the model's score as its only covariate and therefore assumes that the diagnosis depends on the ECG only through that score; the false discovery proportion at Chongqing suggests that this assumption does not hold there. The target v is the source PPV, and a site that sets another target would obtain other certification rates and other sensitivities. Calibration curves are not shown; the calibration of the recalibrated model at 100 labels is in [`results/repairs.json`](results/repairs.json).
+The comparison rests on three sites with correlated transfers within each, and the Beth Israel labels are machine statements. The observed PPV of each draw is estimated on a finite evaluation set, which adds sampling variance to the measured error and to the violation rate. Repair 5 uses the model's score as its only covariate and therefore assumes that the diagnosis depends on the ECG only through that score; the false discovery proportion at Chongqing suggests that this assumption does not hold there. The target v is the source PPV, which no threshold attains at most targets of lower prevalence, so the criterion on certification was likely to be met before the data were read; a site that sets another target would obtain other certification rates and other sensitivities. Chongqing contributes a single transfer. Calibration curves are not shown; the calibration of the recalibrated model at 100 labels is in [`results/repairs.json`](results/repairs.json).
