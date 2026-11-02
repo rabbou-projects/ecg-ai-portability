@@ -479,9 +479,9 @@ def transfer_cell(
 def references(p: Array, y: IntArray) -> dict[str, Any]:
     """Net benefit of flagging every patient, and of the target's own 90%-sensitivity cut.
 
-    The second is fitted on every target label, so no repair with n labels can be
-    expected to beat it; both are read on the whole target, the repairs on the
-    evaluation patients of each draw.
+    The second is fitted on every target label; it is an operating point, not the
+    best net benefit, which a higher threshold can exceed. Both are read on the
+    whole target, the repairs on the evaluation patients of each draw.
     """
     everyone = np.ones(len(y), dtype=bool)
     own = sensitivity_cut(p, y)
