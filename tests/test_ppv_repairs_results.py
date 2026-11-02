@@ -263,3 +263,38 @@ def test_ppv_md_prints_no_figure_the_file_does_not_hold(result: dict[str, Any]) 
     held = {f.removesuffix(" points") for f in ppv_md_figures(result)}
     assert len(printed) > 20
     assert printed <= held, printed - held
+
+
+def ppv_md_summary() -> str:
+    section = ppv_md_section()
+    return section[section.index("### Summary") : section.index("### Objective")]
+
+
+def test_ppv_md_opens_on_a_summary_with_its_findings(result: dict[str, Any]) -> None:
+    """The section opens like an abstract: design and main findings, each figure from the file."""
+    from ecs.repairs import MIN_EVENTS
+
+    section = ppv_md_section()
+    assert section.index("### Summary") < section.index("### Objective")
+    summary = ppv_md_summary()
+    s = result["summary"]
+    at100 = {h: next(b for b in s[h]["budgets"] if b["n"] == 100) for h in MAIN}
+    held = [
+        f"{sum(s[h]['transfers'] for h in MAIN)} transfers",
+        f"{min(result['budgets'])} to {max(result['budgets'])} patients",
+        f"{result['draws']} draws",
+        f"fewer than {('ten' if MIN_EVENTS == 10 else str(MIN_EVENTS))} events",
+        ", ".join(pts(s[h]["prior"]["abs_error"]["median"]) for h in MAIN[:2])
+        + f" and {pts(s['chongqing']['prior']['abs_error']['median'])} points",
+        *(
+            ", ".join(pts(at100[h][f"{m}_abs_error"]["median"]) for h in MAIN[:2])
+            + f" and {pts(at100['chongqing'][f'{m}_abs_error']['median'])} points"
+            for m in ("recalibrated", "resampled")
+        ),
+        ", ".join(pct(at100[h]["sensitivity"]["resampled"]) for h in MAIN[:2])
+        + f" and {pct(at100['chongqing']['sensitivity']['resampled'])} of cases",
+        ", ".join(f"{at100[h]['certified_share_threshold_exists']:.3f}" for h in MAIN[:2])
+        + f" and {at100['chongqing']['certified_share_threshold_exists']:.3f} of draws",
+    ]
+    missing = [f for f in held if f not in summary]
+    assert not missing, missing
