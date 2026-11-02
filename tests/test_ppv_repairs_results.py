@@ -334,6 +334,15 @@ def with_bounds(median: float, bounds: list[float] | None) -> str:
     return f"{pts(median)} ({pts(bounds[0])} to {pts(bounds[1])})"
 
 
+def flags_all_among_defined(b: dict[str, Any]) -> float:
+    """Share of the draws with a refitted threshold in which it flagged every patient.
+
+    Both rates are means over transfers of counts out of the same number of draws,
+    and a draw that flags everyone always has a threshold, so the ratio is exact.
+    """
+    return float(b["resampled_share_flags_all"] / b["resampled_share_defined"])
+
+
 def error_table(result: dict[str, Any]) -> list[str]:
     """Table 1 of PPV.md, one row per site, formatted from the file."""
     rows = []
@@ -352,7 +361,8 @@ def error_table(result: dict[str, Any]) -> list[str]:
                 b["recalibrated_abs_error"]["median"], b["recalibrated_abs_error_median_bounds"]
             ),
             with_bounds(b["resampled_abs_error"]["median"], b["resampled_abs_error_median_bounds"]),
-            f"{b['resampled_share_flags_all']:.2f}",
+            f"{b['resampled_share_defined']:.2f}",
+            f"{flags_all_among_defined(b):.2f}",
         ]
         rows.append("| " + " | ".join(cells) + " |")
     return rows
@@ -396,12 +406,15 @@ def test_ppv_md_post_hoc_claims_are_the_file_s(result: dict[str, Any]) -> None:
     few = {h for h in SITE_NAMES if at[h]["mean_cases_labelled"] < 2}
     assert few == {"shandong", "code15", "zzu"}
     assert max(at[h]["mean_cases_labelled"] for h in SITE_NAMES) < 16
-    shares = [at[h]["resampled_share_flags_all"] for h in SITE_NAMES]
+    shares = [flags_all_among_defined(at[h]) for h in SITE_NAMES]
+    always = {h for h in SITE_NAMES if flags_all_among_defined(at[h]) == pytest.approx(1.0)}
+    assert always == {"shandong", "code15", "code_test", "zzu"}
     gap = {
         h: at[h]["net_benefit"]["resampled"] - s[h]["references"]["treat_all_net_benefit"]
         for h in SITE_NAMES
     }
     assert {h for h, g in gap.items() if abs(g) > 0.006} == {"ptbxl"}
+    assert gap["ptbxl"] < 0
     assert all(
         s[h]["prior"]["net_benefit"] > s[h]["references"]["treat_all_net_benefit"]
         for h in SITE_NAMES
@@ -411,13 +424,13 @@ def test_ppv_md_post_hoc_claims_are_the_file_s(result: dict[str, Any]) -> None:
     ]
     section = ppv_md_section()
     for phrase in (
-        f"{min(shares):.2f} to {max(shares):.2f} of draws",
+        f"{min(shares):.2f} to {max(shares):.2f} of the draws in which it was placed",
         f"where it was {abs(gap['ptbxl']):.3f} lower",
         f"{pts(min(reserve))} to {pts(max(reserve))} points at the eight reserve sites",
         ", ".join(f"{at[h]['mean_cases_labelled']:.1f}" for h in MAIN[:2])
         + f" and {at['chongqing']['mean_cases_labelled']:.1f} cases",
-        ", ".join(f"{at[h]['resampled_share_flags_all']:.2f}" for h in MAIN[:2])
-        + f" and {at['chongqing']['resampled_share_flags_all']:.2f} of draws",
+        ", ".join(f"{flags_all_among_defined(at[h]):.2f}" for h in MAIN[:2])
+        + f" and {flags_all_among_defined(at['chongqing']):.2f} of draws",
         f"was {signed(at['columbia']['net_benefit']['resampled'])} at Columbia, against "
         f"{signed(s['columbia']['references']['treat_all_net_benefit'])} for flagging every "
         f"patient and {signed(s['columbia']['prior']['net_benefit'])} for recalibration",

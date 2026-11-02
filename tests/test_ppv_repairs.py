@@ -3,11 +3,12 @@
 from __future__ import annotations
 
 import math
+from typing import Any
 
 import numpy as np
 import pandas as pd
 import pytest
-from ppv_repairs import freeze_targets, key_of
+from ppv_repairs import freeze_targets, key_of, pooled_error_bounds
 from score_pairs import Pair
 
 from ecs.ppv_repairs import (
@@ -312,6 +313,10 @@ class TestTransferCell:
         assert rung["mean_cases_labelled"] < 9
         # The other draws hold no case at all in the first half and return no cut.
         assert rung["resampled"]["share_flags_all"] > 0.75
+        # Every draw that placed a threshold flagged everyone; a draw with no case has none.
+        assert rung["resampled"]["share_flags_all"] == pytest.approx(
+            rung["resampled"]["share_defined"]
+        )
         assert rung["resampled"]["sensitivity"] == pytest.approx(1.0)
 
     def test_enough_cases_place_a_finite_threshold(self) -> None:
@@ -340,3 +345,46 @@ class TestReferences:
         out = references(p, y)
         assert out["own_cut_sensitivity"] >= 0.9
         assert out["own_cut_net_benefit"] > out["treat_all_net_benefit"]
+
+
+def rung_of(errors: list[list[float]]) -> list[dict[str, Any]]:
+    """Budget rungs whose stated PPV errs by each given amount against an observed 0.5."""
+    return [
+        {"_pairs": {"recalibrated": [(0.5 + e, 0.5) for e in draws], "resampled": []}}
+        for draws in errors
+    ]
+
+
+def bounds_of(rungs: list[dict[str, Any]]) -> tuple[float, float]:
+    out = pooled_error_bounds(rungs, "recalibrated", 0)
+    assert out is not None
+    return out
+
+
+class TestPooledErrorBounds:
+    def test_the_interval_brackets_the_pooled_median(self) -> None:
+        rng = np.random.default_rng(8)
+        rungs = rung_of([list(rng.uniform(0, 0.1, 50)) for _ in range(10)])
+        pooled = np.median(
+            [e for r in rungs for a, o in r["_pairs"]["recalibrated"] for e in [a - o]]
+        )
+        low, high = bounds_of(rungs)
+        assert low <= pooled <= high
+
+    def test_spread_between_transfers_widens_the_interval(self) -> None:
+        """Transfers are redrawn first: medians far apart give a wider interval."""
+        rng = np.random.default_rng(9)
+        alike = rung_of([list(rng.uniform(0.04, 0.06, 50)) for _ in range(10)])
+        apart = rung_of([list(rng.uniform(0.01 * i, 0.01 * i + 0.002, 50)) for i in range(10)])
+        a_low, a_high = bounds_of(alike)
+        b_low, b_high = bounds_of(apart)
+        assert b_high - b_low > 3 * (a_high - a_low)
+
+    def test_one_transfer_is_redrawn_on_its_draws(self) -> None:
+        rng = np.random.default_rng(10)
+        rungs = rung_of([list(rng.uniform(0, 0.1, 200))])
+        low, high = bounds_of(rungs)
+        assert 0 < high - low < 0.03
+
+    def test_a_method_with_no_draw_has_no_interval(self) -> None:
+        assert pooled_error_bounds(rung_of([[0.01]]), "resampled", 0) is None
