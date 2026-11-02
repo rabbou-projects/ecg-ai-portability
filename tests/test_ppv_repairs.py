@@ -17,6 +17,7 @@ from ecs.ppv_repairs import (
     frozen_target,
     labelled_draw,
     prior_repair,
+    references,
     transfer_cell,
     weighted_conformal_selection,
 )
@@ -298,3 +299,44 @@ class TestTransferCell:
         )
         assert [b["n"] for b in cell["budgets"]] == [100]
         assert math.isfinite(cell["prior"]["announced"])
+
+    def test_a_half_under_nine_cases_flags_every_patient(self) -> None:
+        """At 3% prevalence 100 labels hold about three cases, too few for the conformal rank."""
+        rng = np.random.default_rng(5)
+        p_s, y_s = gaussian(3000, 0.3, 0.0, rng)
+        p_t, y_t = gaussian(4000, 0.03, 0.0, rng)
+        cell = transfer_cell(
+            p_s, y_s, p_t, y_t, pd.Series(range(4000)), frozen_target(p_s, y_s), 0, (100,)
+        )
+        rung = cell["budgets"][0]
+        assert rung["mean_cases_labelled"] < 9
+        # The other draws hold no case at all in the first half and return no cut.
+        assert rung["resampled"]["share_flags_all"] > 0.75
+        assert rung["resampled"]["sensitivity"] == pytest.approx(1.0)
+
+    def test_enough_cases_place_a_finite_threshold(self) -> None:
+        """The twin: at 30% prevalence 400 labels hold about 60 cases per half."""
+        rng = np.random.default_rng(6)
+        p_s, y_s = gaussian(3000, 0.3, 0.0, rng)
+        p_t, y_t = gaussian(4000, 0.3, 0.0, rng)
+        cell = transfer_cell(
+            p_s, y_s, p_t, y_t, pd.Series(range(4000)), frozen_target(p_s, y_s), 0, (400,)
+        )
+        rung = cell["budgets"][0]
+        assert rung["mean_cases_labelled"] == pytest.approx(120, rel=0.15)
+        assert rung["resampled"]["share_flags_all"] == 0.0
+
+
+class TestReferences:
+    def test_treat_all_is_prevalence_minus_weighted_non_cases(self) -> None:
+        y = np.array([1] * 20 + [0] * 80)
+        p = np.linspace(0.01, 0.99, 100)
+        out = references(p, y)
+        assert out["treat_all_net_benefit"] == pytest.approx(0.2 - 0.8 * 0.1 / 0.9)
+
+    def test_the_target_own_cut_beats_treat_all_on_a_separating_score(self) -> None:
+        rng = np.random.default_rng(7)
+        p, y = gaussian(4000, 0.1, 0.0, rng)
+        out = references(p, y)
+        assert out["own_cut_sensitivity"] >= 0.9
+        assert out["own_cut_net_benefit"] > out["treat_all_net_benefit"]
