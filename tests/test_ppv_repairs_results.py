@@ -450,6 +450,13 @@ def test_ppv_md_budget_claims_are_the_file_s(result: dict[str, Any]) -> None:
     assert at["columbia"][25]["resampled_finite_abs_error"]["n"] == 18
     assert at["chongqing"][25]["resampled_finite_abs_error"] == {"n": 0}
     assert at["chongqing"][50]["resampled_finite_abs_error"]["n"] == 3
+    caption = (
+        f"With 25 labels the Columbia value rests on "
+        f"{at['columbia'][25]['resampled_finite_abs_error']['n']} draws and no Chongqing "
+        f"threshold was finite; with 50 labels the Chongqing value rests on "
+        f"{at['chongqing'][50]['resampled_finite_abs_error']['n']} draws."
+    )
+    assert caption in ppv_md_section()
     found = at["chongqing"][100]["certified_share_threshold_exists"] * 200
     assert found == pytest.approx(2)
     section = ppv_md_section()
