@@ -287,7 +287,7 @@ def test_ppv_md_opens_on_a_summary_with_its_findings(result: dict[str, Any]) -> 
     at100 = {h: next(b for b in s[h]["budgets"] if b["n"] == 100) for h in MAIN}
     held = [
         f"{sum(s[h]['transfers'] for h in MAIN)} transfers",
-        f"{min(result['budgets'])} to {max(result['budgets'])} patients",
+        f"{min(result['budgets'])} to {max(result['budgets'])} ECGs, drawn by patient",
         f"{result['draws']} draws",
         f"fewer than {('ten' if MIN_EVENTS == 10 else str(MIN_EVENTS))} events",
         ", ".join(pts(s[h]["prior"]["abs_error"]["median"]) for h in MAIN[:2])
@@ -447,6 +447,9 @@ def test_ppv_md_budget_claims_are_the_file_s(result: dict[str, Any]) -> None:
     nine = {h: s[h]["labels_for_nine_cases_per_half"]["median"] for h in MAIN}
     columbia = [b["certified_violation_rate_given_threshold"] for b in at["columbia"].values()]
     assert min(columbia) > result["delta"]
+    assert at["columbia"][25]["resampled_finite_abs_error"]["n"] == 18
+    assert at["chongqing"][25]["resampled_finite_abs_error"] == {"n": 0}
+    assert at["chongqing"][50]["resampled_finite_abs_error"]["n"] == 3
     found = at["chongqing"][100]["certified_share_threshold_exists"] * 200
     assert found == pytest.approx(2)
     section = ppv_md_section()
@@ -466,8 +469,8 @@ def test_ppv_md_budget_claims_are_the_file_s(result: dict[str, Any]) -> None:
             summary,
         ),
         (
-            f"median of {nine['columbia']:.0f} labels at Columbia, {nine['beth_israel']:.0f} at "
-            f"Beth Israel and {nine['chongqing']:.0f} at Chongqing",
+            f"nine cases from {nine['columbia']:.0f} labels at Columbia, "
+            f"{nine['beth_israel']:.0f} at Beth Israel and {nine['chongqing']:.0f} at Chongqing",
             section,
         ),
         (

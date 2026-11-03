@@ -328,6 +328,7 @@ class TestTransferCell:
         assert rung["resampled"]["sensitivity"] == pytest.approx(1.0)
         assert rung["resampled"]["share_finite"] == 0.0
         assert rung["resampled"]["finite_abs_error"] is None
+        assert rung["resampled"]["finite_sensitivity"] is None
         assert cell["labels_for_nine_cases_per_half"] == pytest.approx(18 / y_t.mean())
 
     def test_enough_cases_place_a_finite_threshold(self) -> None:
@@ -344,6 +345,19 @@ class TestTransferCell:
         assert rung["resampled"]["share_finite"] == pytest.approx(1.0)
         assert rung["resampled"]["finite_abs_error"] == rung["resampled"]["abs_error"]
         assert rung["resampled"]["finite_sensitivity"] < 0.97
+
+    def test_finite_draws_are_kept_apart_when_both_kinds_occur(self) -> None:
+        """At 10% prevalence 200 labels hold about ten cases per half: some cuts are +inf."""
+        rng = np.random.default_rng(11)
+        p_s, y_s = gaussian(3000, 0.3, 0.0, rng)
+        p_t, y_t = gaussian(4000, 0.1, 0.0, rng)
+        cell = transfer_cell(
+            p_s, y_s, p_t, y_t, pd.Series(range(4000)), frozen_target(p_s, y_s), 0, (200,)
+        )
+        out = cell["budgets"][0]["resampled"]
+        assert 0.2 < out["share_finite"] < 0.8
+        assert out["finite_sensitivity"] < out["sensitivity"]
+        assert out["finite_abs_error"] != out["abs_error"]
 
 
 class TestReferences:
