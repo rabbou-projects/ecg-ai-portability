@@ -177,7 +177,7 @@ def test_the_direction_ppv_md_states_is_the_file_s(result: dict[str, Any]) -> No
     large = shares_over(result, small=False)
     printed = numbers_in(ppv_md_section())
     for x in (min(large), max(large), max(shares_over(result, small=True))):
-        assert f"{x:.2f}" in printed
+        assert pct(x) in printed
 
 
 def lists_in(value: Any) -> list[int]:
@@ -224,6 +224,11 @@ def pct(x: float) -> str:
     return f"{100 * x:.0f}%"
 
 
+def pct1(x: float) -> str:
+    """A share of draws known to three decimals, as a percentage: 16.8%, 1.0%, 100%."""
+    return "100%" if round(x, 3) == 1 else f"{100 * x:.1f}%"
+
+
 def ppv_md_figures(result: dict[str, Any]) -> list[str]:
     """Every figure PPV.md prints, formatted from the file."""
     s = result["summary"]
@@ -237,8 +242,8 @@ def ppv_md_figures(result: dict[str, Any]) -> list[str]:
             # Listed as "6.0, 5.7 and 6.6 points", so the unit is not beside each figure.
             out.append(pts(at[n]["recalibrated_abs_error"]["median"]))
             out.append(pts(at[n]["resampled_abs_error"]["median"]))
-        out.append(f"{at[100]['certified_violation_rate']:.3f}")
-        out.append(f"{at[100]['certified_share_threshold_exists']:.3f}")
+        out.append(pct1(at[100]["certified_violation_rate"]))
+        out.append(pct1(at[100]["certified_share_threshold_exists"]))
         out.append(f"{s[h]['selection']['mean_fdp']:.2f}")
         out.append(f"{s[h]['selection']['mean_q']:.2f}")
         out.append(pct(s[h]["prior"]["sensitivity"]))
@@ -291,22 +296,24 @@ def ppv_md_part(start: str, stop: str) -> str:
 
 
 def ppv_md_abstract() -> str:
-    return ppv_md_part("### Abstract", "### 1. Introduction")
+    return ppv_md_part("## Abstract", "## 1. Introduction")
 
 
 def test_ppv_md_follows_the_article_s_plan() -> None:
     """Structured abstract, then an Introduction ending on one objective sentence."""
     section = ppv_md_section()
-    heads = ["### Abstract", "### 1. Introduction", "### 2. Methods", "### 3. Results"]
-    heads.append("### 4. Discussion")
+    heads = ["## Abstract", "## 1. Introduction", "## 2. Methods", "## 3. Results"]
+    heads.append("## 4. Discussion")
     assert [section.index(h) for h in heads] == sorted(section.index(h) for h in heads)
     abstract = ppv_md_abstract()
     labels = ["**Background.**", "**Methods.**", "**Results.**", "**Conclusions.**"]
     assert [abstract.index(x) for x in labels] == sorted(abstract.index(x) for x in labels)
-    objective = ppv_md_part("### 1. Introduction", "### 2. Methods").strip().split("\n\n")[-1]
+    objective = ppv_md_part("## 1. Introduction", "## 2. Methods").strip().split("\n\n")[-1]
     assert objective.startswith("We ")
     assert objective.count(". ") == 0 and objective.endswith(".")
     assert not re.search(r"\d", objective)
+    prose = re.sub(r"`[^`]*`|\]\([^)]*\)", "", section)
+    assert not re.search(r"\brepairs?\b", prose, re.IGNORECASE)
 
 
 def test_ppv_md_abstract_prints_the_file(result: dict[str, Any]) -> None:
@@ -329,10 +336,10 @@ def test_ppv_md_abstract_prints_the_file(result: dict[str, Any]) -> None:
             pts(b["recalibrated_abs_error"]["median"]),
             pts(b["resampled_abs_error"]["median"]),
             pts(b["resampled_finite_abs_error"]["median"]),
-            f"{flags_all_among_defined(b):.2f}",
+            pct(flags_all_among_defined(b)),
             pct(b["sensitivity"]["resampled"]),
-            f"{b['certified_share_threshold_exists']:.3f}",
-            f"{b['certified_violation_rate_given_threshold']:.3f}",
+            pct1(b["certified_share_threshold_exists"]),
+            pct1(b["certified_violation_rate_given_threshold"]),
         ]
     assert not missing_from(ppv_md_abstract(), held), missing_from(ppv_md_abstract(), held)
     assert MIN_EVENTS == 10
@@ -395,8 +402,8 @@ def error_table(result: dict[str, Any]) -> list[str]:
                 b["recalibrated_abs_error"]["median"], b["recalibrated_abs_error_median_bounds"]
             ),
             with_bounds(b["resampled_abs_error"]["median"], b["resampled_abs_error_median_bounds"]),
-            f"{b['resampled_share_defined']:.2f}",
-            f"{flags_all_among_defined(b):.2f}",
+            pct(b["resampled_share_defined"]),
+            pct(flags_all_among_defined(b)),
         ]
         rows.append("| " + " | ".join(cells) + " |")
     return rows
@@ -448,8 +455,8 @@ def budget_table(result: dict[str, Any]) -> list[str]:
                 SITE_NAMES[h],
                 str(b["n"]),
                 f"{b['mean_cases_labelled']:.1f}",
-                f"{b['resampled_share_defined']:.2f}",
-                f"{flags_all_among_defined(b):.2f}",
+                pct(b["resampled_share_defined"]),
+                pct(flags_all_among_defined(b)),
                 pts(b["resampled_abs_error"]["median"]),
                 finite_error(b),
                 pct(sens) if sens is not None else "–",
@@ -492,16 +499,16 @@ def test_ppv_md_budget_claims_are_the_file_s(result: dict[str, Any]) -> None:
     assert caption in ppv_md_section()
     found = at["chongqing"][100]["certified_share_threshold_exists"] * 200
     assert found == pytest.approx(2)
-    refitted = ppv_md_part("#### 3.2", "#### 3.3")
+    refitted = ppv_md_part("### 3.2", "### 3.3")
     figures = [f"{nine[h]:.0f}" for h in MAIN]
     for h in MAIN:
         figures += [pts(finite[h]), pct(at[h][100]["resampled_finite_sensitivity"])]
-    figures.append(f"{flags_all_among_defined(at['control'][100]):.2f}")
+    figures.append(pct(flags_all_among_defined(at["control"][100])))
     figures += [str(min(below_half.values())), str(max(below_half.values()))]
     assert not missing_from(refitted, figures), missing_from(refitted, figures)
-    certified = ppv_md_part("#### 3.3", "#### 3.4")
-    figures = [f"{columbia[0]:.3f}", f"{columbia[-1]:.3f}"]
-    figures += [f"{at[h][100]['certified_violation_rate_given_threshold']:.3f}" for h in MAIN]
+    certified = ppv_md_part("### 3.3", "### 3.4")
+    figures = [pct1(columbia[0]), pct1(columbia[-1])]
+    figures += [pct1(at[h][100]["certified_violation_rate_given_threshold"]) for h in MAIN]
     assert not missing_from(certified, figures), missing_from(certified, figures)
     nine_sorted = sorted(nine.values())
     assert f"{nine_sorted[0]:.0f} to {nine_sorted[-1]:.0f} labels" in ppv_md_section()
@@ -531,14 +538,38 @@ def test_ppv_md_post_hoc_claims_are_the_file_s(result: dict[str, Any]) -> None:
         s[h]["prior"]["abs_error"]["median"] for h in SITE_NAMES if h not in (*MAIN, "control")
     ]
     figures = [
-        f"{min(shares):.2f}",
-        f"{max(shares):.2f}",
+        pct(min(shares)),
+        pct(max(shares)),
         f"{abs(gap['ptbxl']):.3f}",
         signed(at["columbia"]["net_benefit"]["resampled"]),
         signed(s["columbia"]["references"]["treat_all_net_benefit"]),
         signed(s["columbia"]["prior"]["net_benefit"]),
     ]
-    reserve_prose = ppv_md_part("#### 3.5", "#### 3.6")
+    reserve_prose = ppv_md_part("### 3.5", "### 3.6")
     assert not missing_from(reserve_prose, figures), missing_from(reserve_prose, figures)
-    label_free = ppv_md_part("#### 3.1", "#### 3.2")
+    label_free = ppv_md_part("### 3.1", "### 3.2")
     assert f"{pts(min(reserve))} to {pts(max(reserve))} points" in label_free
+
+
+def english_form(text: str) -> str:
+    """French number forms back to English: 13,1 to 13.1, 90 % to 90%."""
+    text = re.sub(r"(\d),(\d)", r"\1.\2", text)
+    return text.replace(" %", "%")
+
+
+def test_ppv_fr_md_mirrors_ppv_md() -> None:
+    """The French version has the English plan, table for table and figure for figure."""
+    en = (REPO_ROOT / "PPV.md").read_text()
+    fr = (REPO_ROOT / "PPV.fr.md").read_text()
+
+    def plan(text: str) -> list[str]:
+        return [re.sub(r"\D", "", h) for h in re.findall(r"(?m)^#{2,3} .*$", text)]
+
+    def rows(text: str) -> list[list[str]]:
+        lines = [x for x in text.splitlines() if x.startswith("|") and not x.startswith("|-")]
+        return [re.findall(r"−?\d+(?:\.\d+)?%?", english_form(x)) for x in lines]
+
+    assert plan(fr) == plan(en)
+    assert rows(fr) == rows(en)
+    figures = r"−?\d+(?:\.\d+)?%?"
+    assert sorted(re.findall(figures, english_form(fr))) == sorted(re.findall(figures, en))
