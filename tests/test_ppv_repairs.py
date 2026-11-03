@@ -19,6 +19,7 @@ from ecs.ppv_repairs import (
     labelled_draw,
     prior_repair,
     references,
+    sensitivity_cut,
     transfer_cell,
     weighted_conformal_selection,
 )
@@ -301,6 +302,13 @@ class TestTransferCell:
         assert [b["n"] for b in cell["budgets"]] == [100]
         assert math.isfinite(cell["prior"]["announced"])
 
+    def test_nine_cases_is_the_least_that_places_a_threshold(self) -> None:
+        """ceil((m + 1) * 0.9) exceeds m below nine cases: the cut is +inf."""
+        for m, bounded in ((8, False), (9, True)):
+            p = np.linspace(0.5, 0.99, m)
+            cut = sensitivity_cut(p, np.ones(m, dtype=int))
+            assert cut is not None and math.isfinite(cut) is bounded
+
     def test_a_half_under_nine_cases_flags_every_patient(self) -> None:
         """At 3% prevalence 100 labels hold about three cases, too few for the conformal rank."""
         rng = np.random.default_rng(5)
@@ -318,6 +326,9 @@ class TestTransferCell:
             rung["resampled"]["share_defined"]
         )
         assert rung["resampled"]["sensitivity"] == pytest.approx(1.0)
+        assert rung["resampled"]["share_finite"] == 0.0
+        assert rung["resampled"]["finite_abs_error"] is None
+        assert cell["labels_for_nine_cases_per_half"] == pytest.approx(18 / y_t.mean())
 
     def test_enough_cases_place_a_finite_threshold(self) -> None:
         """The twin: at 30% prevalence 400 labels hold about 60 cases per half."""
@@ -330,6 +341,9 @@ class TestTransferCell:
         rung = cell["budgets"][0]
         assert rung["mean_cases_labelled"] == pytest.approx(120, rel=0.15)
         assert rung["resampled"]["share_flags_all"] == 0.0
+        assert rung["resampled"]["share_finite"] == pytest.approx(1.0)
+        assert rung["resampled"]["finite_abs_error"] == rung["resampled"]["abs_error"]
+        assert rung["resampled"]["finite_sensitivity"] < 0.97
 
 
 class TestReferences:

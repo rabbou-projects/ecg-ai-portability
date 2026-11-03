@@ -298,7 +298,7 @@ def budget_summary(rows: list[dict[str, Any]], n: int, seed: int) -> dict[str, A
         "transfers": len(rungs),
         **{
             f"{m}_{k}": v
-            for m in ("recalibrated", "resampled")
+            for m in ("recalibrated", "resampled", "resampled_finite")
             for k, v in pooled([pair for b in rungs for pair in b["_pairs"][m]]).items()
         },
         "certified_observed": pooled([pair for b in rungs for pair in b["_pairs"]["certified"]])[
@@ -307,8 +307,10 @@ def budget_summary(rows: list[dict[str, Any]], n: int, seed: int) -> dict[str, A
         "mean_cases_labelled": _mean(b["mean_cases_labelled"] for b in rungs),
         **{
             f"{m}_abs_error_median_bounds": pooled_error_bounds(rungs, m, seed + n)
-            for m in ("recalibrated", "resampled")
+            for m in ("recalibrated", "resampled", "resampled_finite")
         },
+        "resampled_share_finite": _mean(b["resampled"]["share_finite"] for b in rungs),
+        "resampled_finite_sensitivity": _mean(b["resampled"]["finite_sensitivity"] for b in rungs),
         "resampled_share_defined": _mean(b["resampled"]["share_defined"] for b in rungs),
         "resampled_share_flags_all": _mean(b["resampled"]["share_flags_all"] for b in rungs),
         "resampled_share_bound_held": _mean(b["resampled"]["share_bound_held"] for b in rungs),
@@ -360,6 +362,13 @@ def hospital_summary(rows: list[dict[str, Any]], seed: int) -> dict[str, Any]:
             "net_benefit": _mean(r["selection"]["net_benefit"] for r in kept),
         },
         "budgets": [budget_summary(kept, n, seed) for n in BUDGETS],
+        "labels_for_nine_cases_per_half": _quartiles(
+            [
+                r["labels_for_nine_cases_per_half"]
+                for r in kept
+                if r["labels_for_nine_cases_per_half"] is not None
+            ]
+        ),
         "references": {
             k: _mean(r["references"][k] for r in kept)
             for k in (
