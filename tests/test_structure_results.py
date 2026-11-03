@@ -14,6 +14,7 @@ from typing import Any
 
 import pandas as pd
 import pytest
+from structure_power import power
 
 from ecs.config import REPO_ROOT
 from ecs.echonext import COMPOSITE, LABELS
@@ -124,3 +125,27 @@ def test_the_judged_anomalies_are_those_with_fifty_target_cases(
         judged = [k for k in LABELS[:-1] if plain.loc[k, "n_pos"] >= 50]
         assert summary["judged_labels"][context] == judged
         assert len(judged) >= 1
+
+
+def test_the_power_file_follows_from_structure_json(
+    results: tuple[dict[str, Any], pd.DataFrame, dict[str, Any]],
+) -> None:
+    """Each probability of the power table is recomputed from the sizes structure.json judges."""
+    summary, _, _ = results
+    recorded = summary["power"]
+    expected = power({k: v for k, v in summary.items() if k != "power"})
+    assert recorded.keys() == expected.keys()
+    for context, readings in expected.items():
+        for reading, cell in readings.items():
+            written = recorded[context][reading]
+            assert written["n"] == cell["n"]
+            assert written["passing_cases"] == cell["passing_cases"]
+            assert written["probability"] == pytest.approx(cell["probability"], abs=1e-12)
+
+
+def test_every_probability_of_the_prose_is_in_the_power_table(rendered: dict[str, str]) -> None:
+    """« with probability 0.40 »: a power figure is read from Table 5, never typed."""
+    quoted = set(re.findall(r"probability (?:above )?(?:is |of )?(0\.\d\d)", DOC.read_text()))
+    assert quoted, "the text quotes no probability"
+    missing = [p for p in quoted if f"| {p} |" not in rendered["power"]]
+    assert not missing, f"probabilities in the prose but not in the power table: {missing}"

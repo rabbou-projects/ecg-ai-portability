@@ -8,7 +8,7 @@ Ruben Abbou · November 2026
 
 **Methods.** Retrospective study in EchoNext v1.1.1, reported following TRIPOD+AI. Seven models were calibrated on 1,903 inpatient ECGs and evaluated on 1,059 outpatients, 271 of them with SHD, and on 1,971 emergency patients, 788 with SHD. Class-conditional conformal thresholds were reweighted by a domain classifier fitted on age and sex, on seven ECG measurements, or on the frozen ECGFounder embedding. The pre-specified criterion required the 95% Wilson interval of composite sensitivity, at the effective sample size, to lie within 85% to 95%, and a majority of judged echocardiographic findings to exceed 80%.
 
-**Results.** Weighting on age and sex gave outpatient sensitivities of 72.7% to 81.5% across models, against 71.6% to 78.6% at the inpatient threshold; weighting on the embedding gave 87.1% to 89.7%, with lower bounds of 81.7% to 84.9% at 213 effective cases. No model met the criterion at that size, at which a recalibration exactly at 90% meets it with probability 0.53; at the 271 outpatient cases, two models met it. Among emergency patients, weighting on the embedding gave 88.5% to 91.5%, and all seven models met the criterion. The weighted thresholds flagged 60.0% to 75.3% of outpatients, against 36.4% to 51.8% at the inpatient threshold, and specificity fell from 57.4%–76.0% to 29.1%–49.7%. ECGFounder fine-tuned on EchoNext reached 72.0% to 75.6% at the inpatient threshold.
+**Results.** Weighting on age and sex gave outpatient sensitivities of 72.7% to 81.5% across models, against 71.6% to 78.6% at the inpatient threshold; weighting on the embedding gave 87.1% to 89.7%, with lower bounds of 81.7% to 84.9% at 213 effective cases. No model met the criterion at that size, at which it is met only for an observed sensitivity of 90.1% to 92.0%, and a recalibration exactly at 90% meets it with probability 0.40; at the 271 outpatient cases, two models met it. Among emergency patients, weighting on the embedding gave 88.5% to 91.5%, and all seven models met the criterion. The weighted thresholds flagged 60.0% to 75.3% of outpatients, against 36.4% to 51.8% at the inpatient threshold, and specificity fell from 57.4%–76.0% to 29.1%–49.7%. ECGFounder fine-tuned on EchoNext reached 72.0% to 75.6% at the inpatient threshold.
 
 **Conclusions.** Covariate-shift weighting on an ECG foundation-model embedding brought sensitivity for SHD close to 90% among outpatients and emergency patients without target diagnoses, at the cost of flagging most outpatients. Among outpatients, the sample was too small to establish whether the recalibrated threshold reached its target.
 
@@ -61,9 +61,9 @@ A finding was judged when it counted at least 50 cases in the target. Among outp
 
 Recalibration with weights on the embedding meets the primary criterion when two conditions hold: the 95% Wilson interval of composite sensitivity lies within 85% to 95%, and a strict majority of judged findings exceeds 80% sensitivity in a one-sided score test at 0.025, with Holm's correction [10].
 
-Both conditions are evaluated at the effective sample size, which the protocol does not define. Weighting concentrates the threshold on few calibration cases; the Kish effective sample size is the number of equally weighted cases to which the weighted sample is equivalent [11]. Two readings are reported. The primary reading takes the smaller of the Kish size and the target case count, since the weighted threshold rests on the calibration cases: 213 among outpatients. The second takes the target case count, on which sensitivity is measured: 271. At 213 cases the lower bound reaches 85% only when more than 90% of cases are detected, so a recalibration exactly on target meets the composite condition with probability 0.53; at 271 cases, with probability 0.69.
+Both conditions are evaluated at the effective sample size, which the protocol does not define. Weighting concentrates the threshold on few calibration cases; the Kish effective sample size is the number of equally weighted cases to which the weighted sample is equivalent [11]. Two readings are reported. The primary reading takes the smaller of the Kish size and the target case count, since the weighted threshold rests on the calibration cases: 213 among outpatients. The second takes the target case count, on which sensitivity is measured: 271. The composite condition has a floor and a ceiling: at 213 cases it is met only for an observed sensitivity of 90.1% to 92.0%, since the lower bound reaches 85% only above 90% and the upper bound exceeds 95% above 92.0%. A recalibration exactly on target therefore meets it with probability 0.40, and with probability 0.61 at 271 cases (Table 5).
 
-The protocol judged the criterion among outpatients. The emergency cohort, whose weights and sensitivities were computed in the same analysis, is reported as a secondary target, judged by the same rules after the outpatient results were read. Eight findings counted at least 50 emergency cases: LVEF at most 45% (310), LV wall thickness at least 13 mm (392), moderate or greater aortic stenosis (66), mitral regurgitation (119), tricuspid regurgitation (131) and RV dysfunction (145), PASP at least 45 mmHg (275) and peak TR velocity at least 3.2 m/s (147). The effective size under the primary reading is 571; the probability above is 0.94.
+The protocol judged the criterion among outpatients. The emergency cohort, whose weights and sensitivities were computed in the same analysis, is reported as a secondary target, judged by the same rules after the outpatient results were read. Eight findings counted at least 50 emergency cases: LVEF at most 45% (310), LV wall thickness at least 13 mm (392), moderate or greater aortic stenosis (66), mitral regurgitation (119), tricuspid regurgitation (131) and RV dysfunction (145), PASP at least 45 mmHg (275) and peak TR velocity at least 3.2 m/s (147). The effective size under the primary reading is 571, at which the probability above is 0.94.
 
 Fine-tuning was to halve the loss of composite sensitivity among outpatients at the inpatient threshold: for each of the three seeds, the upper bound of the loss, 90% minus the lower Wilson bound, had to be at most 9 points.
 
@@ -139,9 +139,20 @@ Table 4. Bounds of the 95% Wilson interval of composite sensitivity weighted on 
 
 Among outpatients, ECGFounder frozen (85.5%–92.8%, four of four findings) and ECGFounder fine-tuned under seed 2 (85.1%–92.4%, three of four) met the criterion at 271 cases; no model met it at 213. Among emergency patients, every model met it under both readings.
 
+Table 5. Observed composite sensitivities for which the 95% Wilson interval lies within 85% to 95%, at the size of each reading, and the probability of such an observation when the true sensitivity is 90%.
+
+<!-- table:power -->
+| Target | Reading | n | Sensitivity meeting the condition | Probability |
+|---|---|---|---|---|
+| outpatient | smaller of cases and Kish size | 213 | 90.1%–92.0% | 0.40 |
+| outpatient | target cases | 271 | 89.3%–92.3% | 0.61 |
+| emergency | smaller of cases and Kish size | 571 | 88.1%–93.2% | 0.94 |
+| emergency | target cases | 788 | 87.6%–93.4% | 0.99 |
+<!-- /table -->
+
 ### 3.4 Among emergency patients, the criterion was met for every model
 
-Table 5. Composite sensitivity among emergency patients, as in Table 2.
+Table 6. Composite sensitivity among emergency patients, as in Table 2.
 
 <!-- table:composite_emergency -->
 | Arm | Inpatient threshold | Weighted on age, sex | Weighted on ECG measurements | Weighted on embedding |
@@ -157,7 +168,7 @@ Table 5. Composite sensitivity among emergency patients, as in Table 2.
 
 At the inpatient threshold, sensitivity among emergency patients was 82.6% to 86.2%, closer to 90% than among outpatients, consistent with the smaller covariate shift (domain AUROC 0.768 on the embedding, against 0.836). Weighting on the embedding gave 88.5% to 91.5%, with lower bounds of 85.6% to 88.8% at 571 effective cases.
 
-Table 6. Judged findings among emergency patients, as in Table 3.
+Table 7. Judged findings among emergency patients, as in Table 3.
 
 <!-- table:anomalies_emergency -->
 | Arm | LVEF ≤ 45% | LV wall ≥ 13 mm | Aortic stenosis | Mitral regurgitation | Tricuspid regurgitation | RV dysfunction | PASP ≥ 45 mmHg | TR velocity ≥ 3.2 m/s | Criterion |
@@ -173,7 +184,7 @@ Table 6. Judged findings among emergency patients, as in Table 3.
 
 ### 3.5 Weighted thresholds flagged more patients at lower specificity
 
-Table 7. Sensitivity, specificity, proportion of ECGs flagged and PPV of the composite flag at the inpatient threshold and at the threshold weighted on the embedding. Intervals for sensitivity are in Tables 2 and 5.
+Table 8. Sensitivity, specificity, proportion of ECGs flagged and PPV of the composite flag at the inpatient threshold and at the threshold weighted on the embedding. Intervals for sensitivity are in Tables 2 and 6.
 
 <!-- table:flags -->
 | Arm | Target | Threshold | Sensitivity | Specificity | Flagged | PPV |
@@ -212,7 +223,7 @@ Among outpatients, weighting raised the proportion flagged from 36.4%–51.8% to
 
 ### 3.6 Threshold recalibration on local labels
 
-Table 8. Composite sensitivity in one half of the outpatients when the per-label thresholds were recalibrated on n labelled outpatients from the other half: mean and 10th to 90th percentiles over 200 draws. The mean can lie outside that range when a tenth of the draws flag nearly every ECG; with 25 or 50 outpatients, few cases are drawn and the threshold often flags every ECG.
+Table 9. Composite sensitivity in one half of the outpatients when the per-label thresholds were recalibrated on n labelled outpatients from the other half: mean and 10th to 90th percentiles over 200 draws. The mean can lie outside that range when a tenth of the draws flag nearly every ECG; with 25 or 50 outpatients, few cases are drawn and the threshold often flags every ECG.
 
 <!-- table:ladder -->
 | Arm | 25 labels | 50 labels | 100 labels | 200 labels | 400 labels |
@@ -228,7 +239,7 @@ Table 8. Composite sensitivity in one half of the outpatients when the per-label
 
 ### 3.7 Calibration and selective prediction
 
-Table 9. Calibration and selective prediction for the composite among inpatients and outpatients, with bootstrap intervals.
+Table 10. Calibration and selective prediction for the composite among inpatients and outpatients, with bootstrap intervals.
 
 <!-- table:calibration -->
 | Arm | Target | Slope | Intercept | ICI | Brier | AUGRC | Sens. at 80% kept |
@@ -253,7 +264,7 @@ At 80% coverage, sensitivity remained above 93% among inpatients for every model
 
 ### 3.8 Fine-tuning ECGFounder did not reduce the loss
 
-Table 10. Composite sensitivity among outpatients at the inpatient threshold, with its lower Wilson bound, and the loss from 90% with its upper bound.
+Table 11. Composite sensitivity among outpatients at the inpatient threshold, with its lower Wilson bound, and the loss from 90% with its upper bound.
 
 <!-- table:a1 -->
 | Arm | Outpatient sensitivity | Loss, points | Loss at most 9 points |
@@ -271,7 +282,7 @@ Table 10. Composite sensitivity among outpatients at the inpatient threshold, wi
 
 ### 4.1 Principal findings
 
-Weighting on the ECGFounder embedding raised composite sensitivity for SHD from 71.6%–78.6% to 87.1%–89.7% among outpatients and from 82.6%–86.2% to 88.5%–91.5% among emergency patients, without target diagnoses. Among outpatients, no model met the pre-specified criterion under the primary reading, but at 213 effective cases the criterion requires an observed sensitivity above the 90% target, and a recalibration exactly on target meets it with probability 0.53; the outpatient result is therefore inconclusive rather than negative. At the 271 outpatient cases two models met it, and among emergency patients, where that probability is 0.94, all seven did. The weighted thresholds reached these sensitivities by flagging more patients: 60.0% to 75.3% of outpatients, at a specificity of 29.1% to 49.7%. Fine-tuning ECGFounder on EchoNext did not reduce the loss of sensitivity at the inpatient threshold: 14.4 to 18.0 points across seeds, against 18.4 for the ResNet.
+Weighting on the ECGFounder embedding raised composite sensitivity for SHD from 71.6%–78.6% to 87.1%–89.7% among outpatients and from 82.6%–86.2% to 88.5%–91.5% among emergency patients, without target diagnoses. Among outpatients, no model met the pre-specified criterion under the primary reading, but at 213 effective cases the criterion is met only for an observed sensitivity of 90.1% to 92.0%, a range that excludes the 90% target itself, and a recalibration exactly on target meets it with probability 0.40; the outpatient result is therefore inconclusive rather than negative. At the 271 outpatient cases two models met it, and among emergency patients, where that probability is 0.94, all seven did. The weighted thresholds reached these sensitivities by flagging more patients: 60.0% to 75.3% of outpatients, at a specificity of 29.1% to 49.7%. Fine-tuning ECGFounder on EchoNext did not reduce the loss of sensitivity at the inpatient threshold: 14.4 to 18.0 points across seeds, against 18.4 for the ResNet.
 
 ### 4.2 Comparison with prior work
 

@@ -58,6 +58,7 @@ def _interval(row: pd.Series) -> str:
 
 def load(root: Path = RESULTS_DIR) -> tuple[dict[str, Any], pd.DataFrame, dict[str, Any]]:
     summary = json.loads((root / "structure.json").read_text())
+    summary["power"] = json.loads((root / "structure_power.json").read_text())["power"]
     coverage = pd.read_csv(root / "structure_coverage.csv")
     calibration = json.loads((root / "structure_calibration.json").read_text())
     return summary, coverage, calibration
@@ -158,6 +159,24 @@ def readings_table(summary: dict[str, Any]) -> str:
         rows.append(row)
     names = {"min_cases_kish": "smaller of cases and Kish size", "target_cases": "target cases"}
     header = ["Arm", *(f"{c.capitalize()}, {names[r]}" for c, r in columns)]
+    return _table(header, rows)
+
+
+def power_table(summary: dict[str, Any]) -> str:
+    """Observed sensitivities that meet the composite condition, and its probability at 90%."""
+    names = {"min_cases_kish": "smaller of cases and Kish size", "target_cases": "target cases"}
+    rows = [
+        [
+            context,
+            names[reading],
+            str(p["n"]),
+            f"{pct(p['passing_low'])}–{pct(p['passing_high'])}",
+            f"{p['probability']:.2f}",
+        ]
+        for context, readings in summary["power"].items()
+        for reading, p in readings.items()
+    ]
+    header = ["Target", "Reading", "n", "Sensitivity meeting the condition", "Probability"]
     return _table(header, rows)
 
 
@@ -272,6 +291,7 @@ def tables(
         "composite_emergency": composite_table(summary, coverage, EMERGENCY),
         "anomalies_emergency": anomaly_table(summary, coverage, EMERGENCY),
         "readings": readings_table(summary),
+        "power": power_table(summary),
         "flags": flags_table(summary, coverage),
         "ladder": ladder_table(summary, coverage),
         "calibration": calibration_table(summary, calibration),

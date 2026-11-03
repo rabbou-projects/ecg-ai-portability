@@ -46,6 +46,7 @@ REGENERABLE = (
     "ppv_gap.json",
     "ppv_intervals.json",
     "shift.json",
+    "structure_power.json",
     "subgroups.json",
 )
 

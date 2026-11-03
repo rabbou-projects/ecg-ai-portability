@@ -8,7 +8,7 @@ Ruben Abbou · novembre 2026
 
 **Méthode.** Étude rétrospective dans EchoNext v1.1.1, rapportée selon TRIPOD+AI. Sept modèles ont été calibrés sur 1 903 ECG de patients hospitalisés et évalués chez 1 059 patients ambulatoires, dont 271 avec une CS, et chez 1 971 patients des urgences, dont 788 avec une CS. Les seuils conformes par classe ont été repondérés par un classifieur de domaine ajusté sur l'âge et le sexe, sur sept mesures ECG ou sur la représentation figée d'ECGFounder. Le critère préspécifié exigeait que l'intervalle de Wilson à 95 % de la sensibilité composite, à la taille d'échantillon effective, soit compris entre 85 % et 95 %, et qu'une majorité des anomalies échocardiographiques jugées dépasse 80 %.
 
-**Résultats.** La pondération sur l'âge et le sexe donnait chez les patients ambulatoires des sensibilités de 72,7 % à 81,5 % selon les modèles, contre 71,6 % à 78,6 % au seuil des patients hospitalisés ; la pondération sur la représentation donnait 87,1 % à 89,7 %, avec des bornes basses de 81,7 % à 84,9 % à 213 cas effectifs. Aucun modèle n'atteignait le critère à cette taille, à laquelle une recalibration exactement à 90 % l'atteint avec une probabilité de 0,53 ; aux 271 cas ambulatoires, deux modèles l'atteignaient. Chez les patients des urgences, la pondération sur la représentation donnait 88,5 % à 91,5 %, et les sept modèles atteignaient le critère. Les seuils pondérés signalaient 60,0 % à 75,3 % des patients ambulatoires, contre 36,4 % à 51,8 % au seuil des patients hospitalisés, et la spécificité baissait de 57,4 %–76,0 % à 29,1 %–49,7 %. ECGFounder affiné sur EchoNext atteignait 72,0 % à 75,6 % au seuil des patients hospitalisés.
+**Résultats.** La pondération sur l'âge et le sexe donnait chez les patients ambulatoires des sensibilités de 72,7 % à 81,5 % selon les modèles, contre 71,6 % à 78,6 % au seuil des patients hospitalisés ; la pondération sur la représentation donnait 87,1 % à 89,7 %, avec des bornes basses de 81,7 % à 84,9 % à 213 cas effectifs. Aucun modèle n'atteignait le critère à cette taille, à laquelle il n'est atteint que pour une sensibilité observée de 90,1 % à 92,0 %, et une recalibration exactement à 90 % l'atteint avec une probabilité de 0,40 ; aux 271 cas ambulatoires, deux modèles l'atteignaient. Chez les patients des urgences, la pondération sur la représentation donnait 88,5 % à 91,5 %, et les sept modèles atteignaient le critère. Les seuils pondérés signalaient 60,0 % à 75,3 % des patients ambulatoires, contre 36,4 % à 51,8 % au seuil des patients hospitalisés, et la spécificité baissait de 57,4 %–76,0 % à 29,1 %–49,7 %. ECGFounder affiné sur EchoNext atteignait 72,0 % à 75,6 % au seuil des patients hospitalisés.
 
 **Conclusions.** La pondération pour décalage de covariables sur la représentation d'un modèle de fondation ECG rapprochait de 90 % la sensibilité pour la CS chez les patients ambulatoires et les patients des urgences sans diagnostic cible, au prix du signalement de la plupart des patients ambulatoires. Chez les patients ambulatoires, l'échantillon était trop petit pour établir si le seuil recalibré atteignait sa cible.
 
@@ -61,9 +61,9 @@ Une anomalie était jugée quand elle comptait au moins 50 cas dans la cible. Ch
 
 La recalibration pondérée sur la représentation atteint le critère principal quand deux conditions sont réunies : l'intervalle de Wilson à 95 % de la sensibilité composite est compris entre 85 % et 95 %, et une majorité stricte des anomalies jugées dépasse 80 % de sensibilité dans un test du score unilatéral à 0,025, avec la correction de Holm [10].
 
-Les deux conditions sont évaluées à la taille d'échantillon effective, que le protocole ne définit pas. La pondération concentre le seuil sur peu de cas de calibration ; la taille effective de Kish est le nombre de cas de poids égaux auquel l'échantillon pondéré équivaut [11]. Deux lectures sont rapportées. La lecture principale prend la plus petite de la taille de Kish et du nombre de cas cibles, puisque le seuil pondéré repose sur les cas de calibration : 213 chez les patients ambulatoires. La seconde prend le nombre de cas cibles, sur lesquels la sensibilité est mesurée : 271. À 213 cas, la borne basse n'atteint 85 % que si plus de 90 % des cas sont détectés, si bien qu'une recalibration exactement sur la cible atteint la condition composite avec une probabilité de 0,53 ; à 271 cas, avec une probabilité de 0,69.
+Les deux conditions sont évaluées à la taille d'échantillon effective, que le protocole ne définit pas. La pondération concentre le seuil sur peu de cas de calibration ; la taille effective de Kish est le nombre de cas de poids égaux auquel l'échantillon pondéré équivaut [11]. Deux lectures sont rapportées. La lecture principale prend la plus petite de la taille de Kish et du nombre de cas cibles, puisque le seuil pondéré repose sur les cas de calibration : 213 chez les patients ambulatoires. La seconde prend le nombre de cas cibles, sur lesquels la sensibilité est mesurée : 271. La condition composite a un plancher et un plafond : à 213 cas, elle n'est remplie que pour une sensibilité observée de 90,1 % à 92,0 %, car la borne basse n'atteint 85 % qu'au-dessus de 90 % et la borne haute dépasse 95 % au-dessus de 92,0 %. Une recalibration exactement sur la cible la remplit donc avec une probabilité de 0,40, et de 0,61 à 271 cas (tableau 5).
 
-Le protocole jugeait le critère chez les patients ambulatoires. La cohorte des urgences, dont les poids et les sensibilités ont été calculés dans la même analyse, est rapportée comme cible secondaire, jugée selon les mêmes règles après la lecture des résultats ambulatoires. Huit anomalies comptaient au moins 50 cas aux urgences : FEVG inférieure ou égale à 45 % (310), épaisseur pariétale du VG d'au moins 13 mm (392), rétrécissement aortique modéré ou plus (66), insuffisance mitrale (119), insuffisance tricuspide (131) et dysfonction du VD (145), PAPS d'au moins 45 mmHg (275) et vitesse maximale d'IT d'au moins 3,2 m/s (147). La taille effective selon la lecture principale est de 571 ; la probabilité ci-dessus est de 0,94.
+Le protocole jugeait le critère chez les patients ambulatoires. La cohorte des urgences, dont les poids et les sensibilités ont été calculés dans la même analyse, est rapportée comme cible secondaire, jugée selon les mêmes règles après la lecture des résultats ambulatoires. Huit anomalies comptaient au moins 50 cas aux urgences : FEVG inférieure ou égale à 45 % (310), épaisseur pariétale du VG d'au moins 13 mm (392), rétrécissement aortique modéré ou plus (66), insuffisance mitrale (119), insuffisance tricuspide (131) et dysfonction du VD (145), PAPS d'au moins 45 mmHg (275) et vitesse maximale d'IT d'au moins 3,2 m/s (147). La taille effective selon la lecture principale est de 571, à laquelle la probabilité ci-dessus est de 0,94.
 
 L'affinage devait réduire de moitié la perte de sensibilité composite chez les patients ambulatoires au seuil des patients hospitalisés : pour chacune des trois graines, la borne haute de la perte, 90 % moins la borne basse de Wilson, devait être d'au plus 9 points.
 
@@ -131,9 +131,18 @@ Tableau 4. Bornes de l'intervalle de Wilson à 95 % de la sensibilité composit
 
 Chez les patients ambulatoires, ECGFounder figé (85,5 %–92,8 %, quatre anomalies sur quatre) et ECGFounder affiné sous la graine 2 (85,1 %–92,4 %, trois sur quatre) atteignaient le critère à 271 cas ; aucun modèle ne l'atteignait à 213. Chez les patients des urgences, tous les modèles l'atteignaient selon les deux lectures.
 
+Tableau 5. Sensibilités composites observées pour lesquelles l'intervalle de Wilson à 95 % est compris entre 85 % et 95 %, à la taille de chaque lecture, et probabilité d'une telle observation quand la sensibilité réelle est de 90 %.
+
+| Cible | Lecture | n | Sensibilité satisfaisant la condition | Probabilité |
+|---|---|---|---|---|
+| patients ambulatoires | plus petit des cas et de la taille de Kish | 213 | 90,1 %–92,0 % | 0,40 |
+| patients ambulatoires | cas cibles | 271 | 89,3 %–92,3 % | 0,61 |
+| urgences | plus petit des cas et de la taille de Kish | 571 | 88,1 %–93,2 % | 0,94 |
+| urgences | cas cibles | 788 | 87,6 %–93,4 % | 0,99 |
+
 ### 3.4 Chez les patients des urgences, le critère était atteint pour tous les modèles
 
-Tableau 5. Sensibilité composite chez les patients des urgences, comme au tableau 2.
+Tableau 6. Sensibilité composite chez les patients des urgences, comme au tableau 2.
 
 | Modèle | Seuil des patients hospitalisés | Pondéré sur l'âge et le sexe | Pondéré sur les mesures ECG | Pondéré sur la représentation |
 |---|---|---|---|---|
@@ -147,7 +156,7 @@ Tableau 5. Sensibilité composite chez les patients des urgences, comme au table
 
 Au seuil des patients hospitalisés, la sensibilité chez les patients des urgences était de 82,6 % à 86,2 %, plus proche de 90 % que chez les patients ambulatoires, en accord avec un décalage de covariables plus faible (ASC de domaine de 0,768 sur la représentation, contre 0,836). La pondération sur la représentation donnait 88,5 % à 91,5 %, avec des bornes basses de 85,6 % à 88,8 % à 571 cas effectifs.
 
-Tableau 6. Anomalies jugées chez les patients des urgences, comme au tableau 3.
+Tableau 7. Anomalies jugées chez les patients des urgences, comme au tableau 3.
 
 | Modèle | FEVG ≤ 45 % | Paroi du VG ≥ 13 mm | Rétrécissement aortique | Insuffisance mitrale | Insuffisance tricuspide | Dysfonction du VD | PAPS ≥ 45 mmHg | Vitesse d'IT ≥ 3,2 m/s | Critère |
 |---|---|---|---|---|---|---|---|---|---|
@@ -161,7 +170,7 @@ Tableau 6. Anomalies jugées chez les patients des urgences, comme au tableau 3.
 
 ### 3.5 Les seuils pondérés signalaient plus de patients, à une spécificité plus basse
 
-Tableau 7. Sensibilité, spécificité, proportion d'ECG signalés et VPP du signalement composite au seuil des patients hospitalisés et au seuil pondéré sur la représentation. Les intervalles de la sensibilité figurent aux tableaux 2 et 5.
+Tableau 8. Sensibilité, spécificité, proportion d'ECG signalés et VPP du signalement composite au seuil des patients hospitalisés et au seuil pondéré sur la représentation. Les intervalles de la sensibilité figurent aux tableaux 2 et 6.
 
 | Modèle | Cible | Seuil | Sensibilité | Spécificité | Signalés | VPP |
 |---|---|---|---|---|---|---|
@@ -198,7 +207,7 @@ Chez les patients ambulatoires, la pondération faisait passer la proportion de 
 
 ### 3.6 Recalibration du seuil sur des étiquettes locales
 
-Tableau 8. Sensibilité composite dans une moitié des patients ambulatoires quand les seuils par anomalie étaient recalibrés sur n patients ambulatoires étiquetés de l'autre moitié : moyenne et 10e à 90e percentiles sur 200 tirages. La moyenne peut sortir de cet intervalle quand un dixième des tirages signale presque tous les ECG ; avec 25 ou 50 patients ambulatoires, peu de cas sont tirés et le seuil signale souvent tous les ECG.
+Tableau 9. Sensibilité composite dans une moitié des patients ambulatoires quand les seuils par anomalie étaient recalibrés sur n patients ambulatoires étiquetés de l'autre moitié : moyenne et 10e à 90e percentiles sur 200 tirages. La moyenne peut sortir de cet intervalle quand un dixième des tirages signale presque tous les ECG ; avec 25 ou 50 patients ambulatoires, peu de cas sont tirés et le seuil signale souvent tous les ECG.
 
 | Modèle | 25 étiquettes | 50 étiquettes | 100 étiquettes | 200 étiquettes | 400 étiquettes |
 |---|---|---|---|---|---|
@@ -212,7 +221,7 @@ Tableau 8. Sensibilité composite dans une moitié des patients ambulatoires qua
 
 ### 3.7 Calibration et prédiction sélective
 
-Tableau 9. Calibration et prédiction sélective pour le composite chez les patients hospitalisés et ambulatoires, avec intervalles bootstrap.
+Tableau 10. Calibration et prédiction sélective pour le composite chez les patients hospitalisés et ambulatoires, avec intervalles bootstrap.
 
 | Modèle | Cible | Pente | Ordonnée | ICI | Brier | AUGRC | Sens. à 80 % conservés |
 |---|---|---|---|---|---|---|---|
@@ -235,7 +244,7 @@ Tableau 9. Calibration et prédiction sélective pour le composite chez les pati
 
 ### 3.8 L'affinage d'ECGFounder ne réduisait pas la perte
 
-Tableau 10. Sensibilité composite chez les patients ambulatoires au seuil des patients hospitalisés, avec sa borne basse de Wilson, et perte par rapport à 90 % avec sa borne haute.
+Tableau 11. Sensibilité composite chez les patients ambulatoires au seuil des patients hospitalisés, avec sa borne basse de Wilson, et perte par rapport à 90 % avec sa borne haute.
 
 | Modèle | Sensibilité, patients ambulatoires | Perte, points | Perte d'au plus 9 points |
 |---|---|---|---|
@@ -251,7 +260,7 @@ Tableau 10. Sensibilité composite chez les patients ambulatoires au seuil des p
 
 ### 4.1 Principaux résultats
 
-La pondération sur la représentation d'ECGFounder faisait passer la sensibilité composite pour la CS de 71,6 %–78,6 % à 87,1 %–89,7 % chez les patients ambulatoires et de 82,6 %–86,2 % à 88,5 %–91,5 % chez les patients des urgences, sans diagnostic cible. Chez les patients ambulatoires, aucun modèle n'atteignait le critère préspécifié selon la lecture principale, mais à 213 cas effectifs le critère exige une sensibilité observée supérieure à la cible de 90 %, et une recalibration exactement sur la cible l'atteint avec une probabilité de 0,53 ; le résultat ambulatoire est donc non concluant plutôt que négatif. Aux 271 cas ambulatoires, deux modèles l'atteignaient, et chez les patients des urgences, où cette probabilité est de 0,94, les sept l'atteignaient. Les seuils pondérés obtenaient ces sensibilités en signalant plus de patients : 60,0 % à 75,3 % des patients ambulatoires, à une spécificité de 29,1 % à 49,7 %. L'affinage d'ECGFounder sur EchoNext ne réduisait pas la perte de sensibilité au seuil des patients hospitalisés : 14,4 à 18,0 points selon les graines, contre 18,4 pour le ResNet.
+La pondération sur la représentation d'ECGFounder faisait passer la sensibilité composite pour la CS de 71,6 %–78,6 % à 87,1 %–89,7 % chez les patients ambulatoires et de 82,6 %–86,2 % à 88,5 %–91,5 % chez les patients des urgences, sans diagnostic cible. Chez les patients ambulatoires, aucun modèle n'atteignait le critère préspécifié selon la lecture principale, mais à 213 cas effectifs le critère n'est atteint que pour une sensibilité observée de 90,1 % à 92,0 %, intervalle qui exclut la cible de 90 % elle-même, et une recalibration exactement sur la cible l'atteint avec une probabilité de 0,40 ; le résultat ambulatoire est donc non concluant plutôt que négatif. Aux 271 cas ambulatoires, deux modèles l'atteignaient, et chez les patients des urgences, où cette probabilité est de 0,94, les sept l'atteignaient. Les seuils pondérés obtenaient ces sensibilités en signalant plus de patients : 60,0 % à 75,3 % des patients ambulatoires, à une spécificité de 29,1 % à 49,7 %. L'affinage d'ECGFounder sur EchoNext ne réduisait pas la perte de sensibilité au seuil des patients hospitalisés : 14,4 à 18,0 points selon les graines, contre 18,4 pour le ResNet.
 
 ### 4.2 Comparaison avec les travaux antérieurs
 

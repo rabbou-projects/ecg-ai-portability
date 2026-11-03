@@ -9,6 +9,7 @@ import math
 
 import numpy as np
 import pytest
+from structure_power import pass_probability, passing_cases
 
 from ecs.structure import (
     a2_verdict,
@@ -222,3 +223,15 @@ class TestCalibration:
         assert empty["sensitivity_at_80_low"] is None
         assert empty["slope_draws"] == 0
         assert math.isclose(empty["brier"], float(np.mean(p[:50] ** 2)))
+
+
+class TestPower:
+    """The power figures of STRUCTURE.md: the band has a ceiling as well as a floor."""
+
+    def test_at_213_cases_only_192_to_196_detected_meet_the_condition(self) -> None:
+        assert passing_cases(213) == [192, 193, 194, 195, 196]
+
+    def test_a_recalibration_on_target_meets_it_four_times_in_ten_at_213(self) -> None:
+        """0.396 with both bounds; the lower bound alone would give 0.530."""
+        assert pass_probability(213, 0.9) == pytest.approx(0.3957, abs=1e-4)
+        assert pass_probability(271, 0.9) == pytest.approx(0.6071, abs=1e-4)
