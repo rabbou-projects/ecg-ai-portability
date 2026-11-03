@@ -232,6 +232,7 @@ def ppv_md_figures(result: dict[str, Any]) -> list[str]:
         out.append(pct(at[100]["sensitivity"]["certified"]))
         for n in (100, 400):
             out.append(pct(at[n]["sensitivity"]["resampled"]))
+        out.append(pts(at[100]["resampled_finite_abs_error"]["median"]))
         # PPV.md: recalibration keeps the source threshold, so its sensitivity is repair 1's.
         assert {pct(b["sensitivity"]["recalibrated"]) for b in at.values()} == {
             pct(prior["sensitivity"])
@@ -392,11 +393,102 @@ def net_benefit_table(result: dict[str, Any]) -> list[str]:
     return rows
 
 
+BUDGET_SITES = (*MAIN, "control")
+
+
+def finite_error(b: dict[str, Any]) -> str:
+    if not b["resampled_finite_abs_error"].get("n"):
+        return "–"
+    return with_bounds(
+        b["resampled_finite_abs_error"]["median"],
+        b["resampled_finite_abs_error_median_bounds"],
+    )
+
+
+def budget_table(result: dict[str, Any]) -> list[str]:
+    """Table 1 of PPV.md, one row per site and budget, formatted from the file."""
+    rows = []
+    for h in BUDGET_SITES:
+        for b in result["summary"][h]["budgets"]:
+            sens = b["resampled_finite_sensitivity"]
+            cells = [
+                SITE_NAMES[h],
+                str(b["n"]),
+                f"{b['mean_cases_labelled']:.1f}",
+                f"{b['resampled_share_defined']:.2f}",
+                f"{flags_all_among_defined(b):.2f}",
+                pts(b["resampled_abs_error"]["median"]),
+                finite_error(b),
+                pct(sens) if sens is not None else "–",
+            ]
+            rows.append("| " + " | ".join(cells) + " |")
+    return rows
+
+
 def test_ppv_md_tables_are_the_file_s(result: dict[str, Any]) -> None:
-    """Every row of Tables 1 and 2 is the file's, reserve sites and controls included."""
+    """Every row of Tables 1 to 3 is the file's, reserve sites and controls included."""
     section = ppv_md_section()
-    missing = [row for row in error_table(result) + net_benefit_table(result) if row not in section]
+    rows = budget_table(result) + error_table(result) + net_benefit_table(result)
+    missing = [row for row in rows if row not in section]
     assert not missing, missing
+
+
+def test_ppv_md_budget_claims_are_the_file_s(result: dict[str, Any]) -> None:
+    """The prose around Table 1: finite-threshold errors, where flagging everyone falls."""
+    s = result["summary"]
+    at = {h: {b["n"]: b for b in s[h]["budgets"]} for h in BUDGET_SITES}
+    finite = {h: at[h][100]["resampled_finite_abs_error"]["median"] for h in MAIN}
+    recal = {h: at[h][100]["recalibrated_abs_error"]["median"] for h in MAIN}
+    assert {h for h in MAIN if finite[h] > recal[h]} == {"columbia", "chongqing"}
+    below_half = {
+        h: min(n for n, b in at[h].items() if flags_all_among_defined(b) < 0.5) for h in MAIN
+    }
+    assert below_half == {"columbia": 400, "beth_israel": 400, "chongqing": 200}
+    nine = {h: s[h]["labels_for_nine_cases_per_half"]["median"] for h in MAIN}
+    columbia = [b["certified_violation_rate_given_threshold"] for b in at["columbia"].values()]
+    assert min(columbia) > result["delta"]
+    found = at["chongqing"][100]["certified_share_threshold_exists"] * 200
+    assert found == pytest.approx(2)
+    section = ppv_md_section()
+    summary = ppv_md_summary()
+    for phrase, where in (
+        (
+            ", ".join(pts(finite[h]) for h in MAIN[:2]) + f" and {pts(finite['chongqing'])} points",
+            section,
+        ),
+        (
+            ", ".join(pct(at[h][100]["resampled_finite_sensitivity"]) for h in MAIN[:2])
+            + f" and {pct(at['chongqing'][100]['resampled_finite_sensitivity'])}",
+            section,
+        ),
+        (
+            ", ".join(f"{nine[h]:.0f}" for h in MAIN[:2]) + f" and {nine['chongqing']:.0f} labels",
+            summary,
+        ),
+        (
+            f"median of {nine['columbia']:.0f} labels at Columbia, {nine['beth_israel']:.0f} at "
+            f"Beth Israel and {nine['chongqing']:.0f} at Chongqing",
+            section,
+        ),
+        (
+            ", ".join(
+                f"{at[h][100]['certified_violation_rate_given_threshold']:.3f}" for h in MAIN[:2]
+            )
+            + f" and {at['chongqing'][100]['certified_violation_rate_given_threshold']:.3f}",
+            summary,
+        ),
+        (
+            f"from {columbia[0]:.3f} with {result['budgets'][0]} labels to {columbia[-1]:.3f} with "
+            f"{result['budgets'][-1]}",
+            section,
+        ),
+        (
+            f"controls the refitted threshold flagged every patient in "
+            f"{flags_all_among_defined(at['control'][100]):.2f} of the draws",
+            section,
+        ),
+    ):
+        assert phrase in where, phrase
 
 
 def test_ppv_md_post_hoc_claims_are_the_file_s(result: dict[str, Any]) -> None:
@@ -430,7 +522,8 @@ def test_ppv_md_post_hoc_claims_are_the_file_s(result: dict[str, Any]) -> None:
         ", ".join(f"{at[h]['mean_cases_labelled']:.1f}" for h in MAIN[:2])
         + f" and {at['chongqing']['mean_cases_labelled']:.1f} cases",
         ", ".join(f"{flags_all_among_defined(at[h]):.2f}" for h in MAIN[:2])
-        + f" and {flags_all_among_defined(at['chongqing']):.2f} of draws",
+        + f" and {flags_all_among_defined(at['chongqing']):.2f} of the draws in which it was"
+        " placed",
         f"was {signed(at['columbia']['net_benefit']['resampled'])} at Columbia, against "
         f"{signed(s['columbia']['references']['treat_all_net_benefit'])} for flagging every "
         f"patient and {signed(s['columbia']['prior']['net_benefit'])} for recalibration",
