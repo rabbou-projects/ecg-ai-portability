@@ -32,10 +32,19 @@ LABEL_NAMES = {
     "lvef_lte_45_flag": "LVEF ≤ 45%",
     "lvwt_gte_13_flag": "LV wall ≥ 13 mm",
     "aortic_stenosis_moderate_or_greater_flag": "Aortic stenosis",
+    "aortic_regurgitation_moderate_or_greater_flag": "Aortic regurgitation",
+    "mitral_regurgitation_moderate_or_greater_flag": "Mitral regurgitation",
+    "tricuspid_regurgitation_moderate_or_greater_flag": "Tricuspid regurgitation",
+    "pulmonary_regurgitation_moderate_or_greater_flag": "Pulmonary regurgitation",
+    "rv_systolic_dysfunction_moderate_or_greater_flag": "RV dysfunction",
+    "pericardial_effusion_moderate_large_flag": "Pericardial effusion",
     "pasp_gte_45_flag": "PASP ≥ 45 mmHg",
+    "tr_max_gte_32_flag": "TR velocity ≥ 3.2 m/s",
 }
 COVARIATE_NAMES = {"age_sex": "age, sex", "tabular": "ECG measurements", "embedding": "embedding"}
 CONTEXT = "outpatient"
+EMERGENCY = "emergency"
+PRIMARY_READING = "min_cases_kish"
 
 
 def pct(x: float | None) -> str:
@@ -81,22 +90,22 @@ def domain_table(summary: dict[str, Any]) -> str:
     return _table(["Target", *COVARIATE_NAMES.values()], rows)
 
 
-def composite_table(summary: dict[str, Any], coverage: pd.DataFrame) -> str:
-    """A2 on the composite: the single threshold and each weighting, outpatients."""
+def composite_table(summary: dict[str, Any], coverage: pd.DataFrame, context: str) -> str:
+    """A2 on the composite: the single threshold and each weighting, at the smaller size."""
     rows = []
     for arm in summary["arms"]:
-        plain = _cell(coverage, arm=arm, label=COMPOSITE, context=CONTEXT, method="plain")
+        plain = _cell(coverage, arm=arm, label=COMPOSITE, context=context, method="plain")
         row = [ARM_NAMES[arm], _interval(plain)]
         for name in COVARIATE_NAMES:
             w = _cell(
                 coverage,
                 arm=arm,
                 label=COMPOSITE,
-                context=CONTEXT,
+                context=context,
                 method="weighted",
                 covariates=name,
             )
-            low, high = summary["a2"][arm][name]["composite_interval"]
+            low, high = summary["a2"][context][PRIMARY_READING][arm][name]["composite_interval"]
             row.append(
                 f"{pct(w['coverage_pos'])} ({pct(low)}–{pct(high)}, n={int(w['n_effective'])})"
             )
@@ -105,18 +114,19 @@ def composite_table(summary: dict[str, Any], coverage: pd.DataFrame) -> str:
     return _table(header, rows)
 
 
-def anomaly_table(summary: dict[str, Any], coverage: pd.DataFrame) -> str:
-    """A2 per judged anomaly, weighted on the embedding: sensitivity, size, Holm verdict."""
+def anomaly_table(summary: dict[str, Any], coverage: pd.DataFrame, context: str) -> str:
+    """A2 per judged anomaly, weighted on the embedding, at the smaller size: Holm verdict."""
+    judged = summary["judged_labels"][context]
     rows = []
     for arm in summary["arms"]:
-        verdict = summary["a2"][arm][summary["verdict_covariates"]]
+        verdict = summary["a2"][context][PRIMARY_READING][arm][summary["verdict_covariates"]]
         row = [ARM_NAMES[arm]]
-        for label in summary["judged_labels"]:
+        for label in judged:
             w = _cell(
                 coverage,
                 arm=arm,
                 label=label,
-                context=CONTEXT,
+                context=context,
                 method="weighted",
                 covariates=summary["verdict_covariates"],
             )
@@ -124,7 +134,62 @@ def anomaly_table(summary: dict[str, Any], coverage: pd.DataFrame) -> str:
             row.append(f"{pct(w['coverage_pos'])}, n={int(w['n_effective'])}, {mark}")
         row.append("holds" if verdict["repair_holds"] else "fails")
         rows.append(row)
-    header = ["Arm", *(LABEL_NAMES[k] for k in summary["judged_labels"]), "Repair"]
+    header = ["Arm", *(LABEL_NAMES[k] for k in judged), "Repair"]
+    return _table(header, rows)
+
+
+def readings_table(summary: dict[str, Any]) -> str:
+    """The composite interval and the repair's verdict on the embedding, per size reading."""
+    columns = [(c, r) for c in summary["verdict_contexts"] for r in summary["readings"]]
+    rows = []
+    for arm in summary["arms"]:
+        row = [ARM_NAMES[arm]]
+        for context, reading in columns:
+            v = summary["a2"][context][reading][arm][summary["verdict_covariates"]]
+            low, high = v["composite_interval"]
+            mark = "holds" if v["repair_holds"] else "fails"
+            row.append(
+                f"{pct(low)}–{pct(high)}, n={v['n']}, "
+                f"{v['anomalies_passed']}/{v['anomalies_judged']} anomalies, {mark}"
+            )
+        rows.append(row)
+    names = {"min_cases_kish": "smaller of cases and Kish size", "target_cases": "target cases"}
+    header = ["Arm", *(f"{c.capitalize()}, {names[r]}" for c, r in columns)]
+    return _table(header, rows)
+
+
+def flags_table(summary: dict[str, Any], coverage: pd.DataFrame) -> str:
+    """What the composite flag costs: sensitivity, specificity, share flagged and PPV.
+
+    Sensitivity is shown without its interval, which the composite tables give at the
+    size the verdict uses.
+    """
+
+    def fig(row: pd.Series, key: str) -> str:
+        return f"{pct(row[key])} ({pct(row[key + '_low'])}–{pct(row[key + '_high'])})"
+
+    rows = []
+    for context in summary["verdict_contexts"]:
+        for arm in summary["arms"]:
+            for method, label in (("plain", "inpatient threshold"), ("weighted", "weighted")):
+                where = (
+                    {"covariates": summary["verdict_covariates"]} if method == "weighted" else {}
+                )
+                c = _cell(
+                    coverage, arm=arm, label=COMPOSITE, context=context, method=method, **where
+                )
+                rows.append(
+                    [
+                        ARM_NAMES[arm],
+                        context,
+                        label,
+                        pct(c["coverage_pos"]),
+                        fig(c, "specificity"),
+                        pct(c["flagged"]),
+                        fig(c, "ppv"),
+                    ]
+                )
+    header = ["Arm", "Target", "Threshold", "Sensitivity", "Specificity", "Flagged", "PPV"]
     return _table(header, rows)
 
 
@@ -199,8 +264,12 @@ def tables(
 ) -> dict[str, str]:
     return {
         "domain": domain_table(summary),
-        "composite": composite_table(summary, coverage),
-        "anomalies": anomaly_table(summary, coverage),
+        "composite": composite_table(summary, coverage, CONTEXT),
+        "anomalies": anomaly_table(summary, coverage, CONTEXT),
+        "composite_emergency": composite_table(summary, coverage, EMERGENCY),
+        "anomalies_emergency": anomaly_table(summary, coverage, EMERGENCY),
+        "readings": readings_table(summary),
+        "flags": flags_table(summary, coverage),
         "ladder": ladder_table(summary, coverage),
         "calibration": calibration_table(summary, calibration),
         "a1": a1_table(summary),

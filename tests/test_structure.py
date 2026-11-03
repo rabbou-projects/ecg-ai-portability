@@ -16,6 +16,7 @@ from ecs.structure import (
     calibration_cell,
     domain_weights,
     effective_cases,
+    flag_row,
     holm_rejections,
     integrated_calibration_index,
     selective_sensitivity,
@@ -147,6 +148,35 @@ class TestVerdict:
         assert a2_verdict(composite, three)["repair_holds"] is True
         assert a2_verdict(composite, two)["repair_holds"] is False
         assert a2_verdict(self._row(0.8, 400), three)["repair_holds"] is False
+
+    def test_the_verdict_is_judged_at_the_size_column_it_is_given(self) -> None:
+        """89.7% fails the band at the 213 of the smaller reading (Wilson 84.9%) and passes
+        at the 271 target cases (Wilson 85.5%): the A2 verdict turns on the reading."""
+        row = {"coverage_pos": 0.897, "n_effective": 213, "n_pos": 271}
+        strong = {"x": {"coverage_pos": 0.95, "n_effective": 213, "n_pos": 271}}
+        smaller, cases = a2_verdict(row, strong), a2_verdict(row, strong, "n_pos")
+        assert (smaller["n"], smaller["composite_pass"]) == (213, False)
+        assert (cases["n"], cases["composite_pass"]) == (271, True)
+        assert smaller["composite_interval"][0] == pytest.approx(0.849, abs=5e-4)
+        assert cases["composite_interval"][0] == pytest.approx(0.855, abs=5e-4)
+
+
+class TestFlag:
+    def test_specificity_share_flagged_and_ppv_by_hand(self) -> None:
+        """Four cases, three flagged; six non-cases, two flagged: specificity 4/6, five of
+        ten flagged, PPV 3/5.  A weighted threshold's cost is read on these three."""
+        y = np.array([1, 1, 1, 1, 0, 0, 0, 0, 0, 0])
+        flagged = np.array([1, 1, 1, 0, 1, 1, 0, 0, 0, 0], dtype=bool)
+        row = flag_row(flagged, y)
+        assert row["specificity"] == pytest.approx(4 / 6)
+        assert row["flagged"] == pytest.approx(0.5)
+        assert row["ppv"] == pytest.approx(0.6)
+        assert row["ppv_low"] < 0.6 < row["ppv_high"]
+
+    def test_a_flag_on_nobody_has_no_ppv(self) -> None:
+        """No record flagged leaves PPV undefined rather than zero."""
+        row = flag_row(np.zeros(4, dtype=bool), np.array([1, 0, 0, 0]))
+        assert (row["specificity"], row["flagged"], row["ppv"]) == (1.0, 0.0, None)
 
 
 class TestSelective:

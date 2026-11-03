@@ -17,10 +17,10 @@ The falsifier is fixed in the protocol before any result was read: on the
 composite, the 95% Wilson interval of the weighted sensitivity lies inside
 [85%, 95%]; on each judged anomaly (at least 50 target cases), the sensitivity
 clears 80% in a one-sided score test at 0.025 after Holm's correction.  Both
-are computed at the effective size min(target cases, Kish size of the
-calibration cases' weights), because the threshold rests on the weighted
-calibration cases and an interval at the full target count would overstate
-what the weights support.
+are computed at an effective size the protocol does not define further; both
+readings in READINGS are reported.  The smaller, min(target cases, Kish size of
+the calibration cases' weights), holds that the threshold rests on the weighted
+calibration cases; the larger counts the target cases the sensitivity is read on.
 
 A3, selective prediction.  The decision is the study's: flag when p reaches the
 calibration threshold that keeps 90% of inpatient cases.  Confidence is the
@@ -54,12 +54,14 @@ __all__ = [
     "ANOMALY_FLOOR",
     "COMPOSITE_BAND",
     "JUDGED_MIN_CASES",
+    "READINGS",
     "DomainWeights",
     "a2_verdict",
     "augrc",
     "calibration_cell",
     "domain_weights",
     "effective_cases",
+    "flag_row",
     "holm_rejections",
     "integrated_calibration_index",
     "selective_sensitivity",
@@ -81,6 +83,10 @@ ONE_SIDED_LEVEL = 0.025
 RETAINED = 0.80
 BOOTSTRAP_DRAWS = 500
 ICI_GRID = 200
+# The two readings of the protocol's « calculé sur la taille effective »: the
+# size the build session chose, min(target cases, Kish size of the calibration
+# cases' weights), and the target cases alone.  The protocol fixes neither.
+READINGS = {"min_cases_kish": "n_effective", "target_cases": "n_pos"}
 
 
 @dataclass(frozen=True)
@@ -158,6 +164,24 @@ def effective_cases(n_target_cases: int, case_weights: Array) -> int:
     return int(min(n_target_cases, math.floor(effective_sample_size(case_weights))))
 
 
+def flag_row(flagged: BoolArray, y: IntArray) -> dict[str, Any]:
+    """Specificity, share flagged and PPV of a flag, each with its 95% Wilson interval.
+
+    A record is flagged when class 1 is in its set, so the flag's sensitivity is
+    the coverage of cases; what the flag costs is read on the non-cases.
+    """
+    flagged, y = np.asarray(flagged, dtype=bool), np.asarray(y, dtype=int)
+    out: dict[str, Any] = {}
+    for name, hits, n in (
+        ("specificity", int((~flagged & (y == 0)).sum()), int((y == 0).sum())),
+        ("flagged", int(flagged.sum()), len(y)),
+        ("ppv", int((flagged & (y == 1)).sum()), int(flagged.sum())),
+    ):
+        low, high = wilson_interval(hits, n) if n else (None, None)
+        out |= {name: hits / n if n else None, f"{name}_low": low, f"{name}_high": high}
+    return out
+
+
 def superiority_p(sensitivity: float, n: int, floor: float = ANOMALY_FLOOR) -> float:
     """One-sided score-test p-value of H0: sensitivity <= floor, at sample size n."""
     if n <= 0:
@@ -177,24 +201,27 @@ def holm_rejections(p_values: dict[str, float], level: float = ONE_SIDED_LEVEL) 
     return rejected
 
 
-def a2_verdict(composite: dict[str, Any], anomalies: dict[str, dict[str, Any]]) -> dict[str, Any]:
-    """The protocol's A2 decision from weighted-sensitivity rows.
+def a2_verdict(
+    composite: dict[str, Any], anomalies: dict[str, dict[str, Any]], size: str = "n_effective"
+) -> dict[str, Any]:
+    """The protocol's A2 decision from weighted-sensitivity rows, judged at the column ``size``.
 
-    Each row holds ``coverage_pos`` and ``n_effective``.  The composite passes
-    when its 95% Wilson interval at the effective size lies in COMPOSITE_BAND;
-    an anomaly passes when Holm rejects sensitivity <= 80%; the repair holds
-    when the composite and a strict majority of judged anomalies pass.
+    Each row holds ``coverage_pos`` and ``size``.  The composite passes when its
+    95% Wilson interval at that size lies in COMPOSITE_BAND; an anomaly passes
+    when Holm rejects sensitivity <= 80%; the repair holds when the composite
+    and a strict majority of judged anomalies pass.
     """
-    n = composite["n_effective"]
+    n = int(composite[size])
     low, high = wilson_interval(round(composite["coverage_pos"] * n), n) if n else (0.0, 1.0)
     composite_pass = COMPOSITE_BAND[0] <= low and high <= COMPOSITE_BAND[1]
     p_values = {
-        label: superiority_p(row["coverage_pos"], row["n_effective"])
+        label: superiority_p(row["coverage_pos"], int(row[size]))
         for label, row in anomalies.items()
     }
     passed = holm_rejections(p_values)
     majority = sum(passed.values()) > len(passed) / 2
     return {
+        "n": n,
         "composite_interval": [low, high],
         "composite_pass": composite_pass,
         "anomaly_p_values": p_values,

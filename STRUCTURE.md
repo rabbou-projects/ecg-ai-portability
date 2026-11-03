@@ -4,11 +4,11 @@
 
 **Background.** ECG models for structural heart disease (SHD) are applied at a threshold set for a target sensitivity in the derivation population. At Columbia, the threshold set for 90% sensitivity among inpatients detected 71.6% of SHD among outpatients for the published study's trained ResNet ([README](README.md)). Recalibrating the threshold for outpatients conventionally requires outpatients with echocardiographic diagnoses. Weighted conformal prediction recalibrates without target diagnoses under covariate shift, provided that the probability of SHD given the ECG is invariant between settings; this assumption has not been examined for any ECG model of SHD.
 
-**Methods.** Retrospective study in EchoNext v1.1.1, reported following TRIPOD+AI. Seven models were calibrated on 1,903 inpatient ECGs and evaluated on 1,059 outpatients, 271 of them with SHD. Class-conditional conformal thresholds were reweighted by a domain classifier fitted on age and sex, on seven ECG measurements, or on the frozen ECGFounder embedding. The pre-specified criterion required the lower bound of the 95% Wilson interval of composite sensitivity, at the effective sample size, to reach 85%.
+**Methods.** Retrospective study in EchoNext v1.1.1, reported following TRIPOD+AI. Seven models were calibrated on 1,903 inpatient ECGs and evaluated on 1,059 outpatients, 271 of them with SHD. Class-conditional conformal thresholds were reweighted by a domain classifier fitted on age and sex, on seven ECG measurements, or on the frozen ECGFounder embedding. The pre-specified criterion required the lower bound of the 95% Wilson interval of composite sensitivity, at the effective sample size, to reach 85%. The protocol does not define the effective size; both readings are reported, the smaller of the Kish size and the target case count (213 outpatient cases), and the target case count (271). 1,971 emergency patients, 788 with SHD, were judged by the same rules as a secondary target added after the outpatient results were read.
 
-**Results.** Weighting on age and sex gave outpatient sensitivities of 72.7% to 81.5% across models, against 71.6% to 78.6% at the inpatient threshold; weighting on the embedding gave 87.1% to 89.7%, at an effective size of 213 cases. No model met the pre-specified criterion. ECGFounder fine-tuned on EchoNext under three seeds reached 72.0% to 75.6% at the inpatient threshold. Thresholds recalibrated on 100 to 200 labelled outpatients reached a mean sensitivity of at least 90% for five of the seven models.
+**Results.** Weighting on age and sex gave outpatient sensitivities of 72.7% to 81.5% across models, against 71.6% to 78.6% at the inpatient threshold; weighting on the embedding gave 87.1% to 89.7%, with lower bounds of 81.7% to 84.9% at 213 cases. No model met the criterion at 213 cases, a size at which a recalibration exactly at 90% passes with probability 0.53; at 271 cases, two models met it. Among emergency patients, weighting on the embedding gave 88.5% to 91.5%, and all seven models met the criterion under both readings. The weighted threshold flagged 60.0% to 75.3% of outpatients, against 36.4% to 51.8% at the inpatient threshold, and specificity fell from 57.4%–76.0% to 29.1%–49.7%. ECGFounder fine-tuned on EchoNext under three seeds reached 72.0% to 75.6% at the inpatient threshold. Thresholds recalibrated on 100 to 200 labelled outpatients reached a mean sensitivity of at least 90% for five of the seven models.
 
-**Conclusions.** Covariate-shift weighting on an ECG foundation-model embedding recovered most, but not all, of the sensitivity lost between inpatients and outpatients. In this cohort, label-free recalibration did not substitute for a labelled outpatient sample of 100 to 200 patients.
+**Conclusions.** Covariate-shift weighting on an ECG foundation-model embedding brought composite sensitivity close to 90% among outpatients and emergency patients, at the cost of flagging most outpatients. Among outpatients, the pre-specified test was too small to show whether the recalibration reached its target.
 
 ## Introduction
 
@@ -65,7 +65,11 @@ The rules were fixed in the protocol of 16 October 2026, before any result was r
 
 Recalibration with weights on the embedding (A2) succeeds when two conditions hold. The 95% Wilson interval of composite sensitivity, a score interval for a proportion that remains valid in small samples, lies within [85%, 95%]. A strict majority of judged findings exceeds 80% sensitivity in a one-sided score test at 0.025, with Holm's correction for four tests.
 
-Both conditions are evaluated at the effective sample size. Weighting concentrates the threshold on few calibration cases; the Kish effective sample size is the number of equally weighted cases to which the weighted sample is equivalent. The effective size is the smaller of that number and the target case count, since the weighted threshold rests on the calibration cases.
+Both conditions are evaluated « calculé sur la taille effective », in the protocol's words, which do not say which size is meant. Weighting concentrates the threshold on few calibration cases; the Kish effective sample size is the number of equally weighted cases to which the weighted sample is equivalent. Two readings are reported. The first, the primary reading, takes the smaller of the Kish size and the target case count, since the weighted threshold rests on the calibration cases: 213 among outpatients. The second takes the target case count, on which the sensitivity is measured: 271. At 213 cases the lower bound reaches 85% only when more than 90% of cases are detected, so a recalibration exactly on target passes the composite condition with probability 0.53; at 271 cases, with probability 0.69.
+
+The protocol judged A2 on outpatients. The emergency cohort, whose weights and sensitivities were computed in the same run, is reported as a secondary target, judged by the same rules after the outpatient results were read. Eight findings counted at least 50 emergency cases: LVEF at most 45% (310), LV wall thickness at least 13 mm (392), moderate or greater aortic stenosis (66), mitral regurgitation (119), tricuspid regurgitation (131) and RV dysfunction (145), PASP at least 45 mmHg (275) and peak TR velocity at least 3.2 m/s (147). With 788 cases, the effective size is 571 under the first reading.
+
+The flag is the presence of SHD in an ECG's conformal set, including sets that hold both classes. At the inpatient threshold and at the threshold weighted on the embedding, specificity among target patients without SHD, the proportion of target ECGs flagged and the positive predictive value (PPV, the proportion of flagged patients who have SHD) are reported with Wilson intervals.
 
 Fine-tuning (A1) halves the published loss when, for each of the three seeds, the upper bound of the loss of composite sensitivity among outpatients is at most 9 points, the upper bound being 90% minus the lower Wilson bound.
 
@@ -91,11 +95,11 @@ Sensitivity with its 95% Wilson interval; for the weighted thresholds, the inter
 | ECGFounder fine-tuned, seed 2 | 75.6% (70.2%–80.4%) | 77.9% (72.5%–82.4%, n=271) | 81.2% (76.1%–85.4%, n=271) | 89.3% (84.3%–92.7%, n=213) |
 <!-- /table -->
 
-Weighting on age and sex changed sensitivity by at most 3 points. Weighting on the ECG measurements recovered part of the loss, and weighting on the embedding brought every model within 3 points of 90%, at an effective size of 213 calibration cases.
+Weighting on age and sex changed sensitivity by at most 3 points. Weighting on the ECG measurements recovered part of the loss, and weighting on the embedding brought every model within 3 points of 90%, at an effective size of 213 calibration cases, with lower bounds of 81.7% to 84.9%.
 
 ### Judged findings, weighted on the embedding
 
-Sensitivity among outpatients, effective size, and the Holm-corrected test against 80%.
+Sensitivity among outpatients, effective size, and the Holm-corrected test against 80%. The repair column applies the first reading of the effective size.
 
 <!-- table:anomalies -->
 | Arm | LVEF ≤ 45% | LV wall ≥ 13 mm | Aortic stenosis | PASP ≥ 45 mmHg | Repair |
@@ -108,6 +112,95 @@ Sensitivity among outpatients, effective size, and the Holm-corrected test again
 | ECGFounder fine-tuned, seed 1 | 91.4%, n=70, fails | 89.0%, n=101, fails | 100.0%, n=29, passes | 82.5%, n=63, fails | fails |
 | ECGFounder fine-tuned, seed 2 | 92.9%, n=70, passes | 89.7%, n=101, passes | 100.0%, n=29, passes | 85.7%, n=63, fails | fails |
 <!-- /table -->
+
+### The two readings of the effective size
+
+Lower and upper bounds of the 95% Wilson interval of composite sensitivity weighted on the embedding, the size at which both conditions are judged, the judged findings that pass, and the verdict.
+
+<!-- table:readings -->
+| Arm | Outpatient, smaller of cases and Kish size | Outpatient, target cases | Emergency, smaller of cases and Kish size | Emergency, target cases |
+|---|---|---|---|---|
+| ResNet trained on EchoNext | 84.3%–92.7%, n=213, 2/4 anomalies, fails | 85.1%–92.4%, n=271, 2/4 anomalies, fails | 88.8%–93.4%, n=571, 6/8 anomalies, holds | 89.3%–93.2%, n=788, 6/8 anomalies, holds |
+| ResNet at random initialisation, probes | 82.7%–91.5%, n=213, 2/4 anomalies, fails | 83.4%–91.2%, n=271, 3/4 anomalies, fails | 86.9%–91.9%, n=571, 5/8 anomalies, holds | 87.3%–91.5%, n=788, 6/8 anomalies, holds |
+| ECGFounder frozen, probes | 84.9%–93.1%, n=213, 4/4 anomalies, fails | 85.5%–92.8%, n=271, 4/4 anomalies, holds | 85.6%–90.8%, n=571, 5/8 anomalies, holds | 86.0%–90.5%, n=788, 5/8 anomalies, holds |
+| EchoNext mini-model | 84.9%–93.1%, n=213, 2/4 anomalies, fails | 85.5%–92.8%, n=271, 2/4 anomalies, fails | 86.9%–91.9%, n=571, 5/8 anomalies, holds | 87.3%–91.5%, n=788, 5/8 anomalies, holds |
+| ECGFounder fine-tuned, seed 0 | 81.7%–90.7%, n=213, 3/4 anomalies, fails | 82.6%–90.6%, n=271, 3/4 anomalies, fails | 85.9%–91.1%, n=571, 7/8 anomalies, holds | 86.3%–90.7%, n=788, 7/8 anomalies, holds |
+| ECGFounder fine-tuned, seed 1 | 83.2%–91.9%, n=213, 1/4 anomalies, fails | 83.8%–91.5%, n=271, 3/4 anomalies, fails | 88.1%–92.8%, n=571, 7/8 anomalies, holds | 88.5%–92.6%, n=788, 7/8 anomalies, holds |
+| ECGFounder fine-tuned, seed 2 | 84.3%–92.7%, n=213, 3/4 anomalies, fails | 85.1%–92.4%, n=271, 3/4 anomalies, holds | 86.3%–91.4%, n=571, 5/8 anomalies, holds | 86.7%–91.1%, n=788, 6/8 anomalies, holds |
+<!-- /table -->
+
+Among outpatients, ECGFounder frozen (85.5%–92.8%, four of four findings) and ECGFounder fine-tuned under seed 2 (85.1%–92.4%, three of four) met both conditions at 271 cases; no model met them at 213. Among emergency patients, every model met both conditions under both readings.
+
+### Emergency patients, a secondary target
+
+Composite sensitivity among emergency patients, as in the outpatient table.
+
+<!-- table:composite_emergency -->
+| Arm | Single threshold | Weighted on age, sex | Weighted on ECG measurements | Weighted on embedding |
+|---|---|---|---|---|
+| ResNet trained on EchoNext | 86.2% (83.6%–88.4%) | 87.1% (84.5%–89.2%, n=788) | 87.9% (85.5%–90.0%, n=788) | 91.5% (88.8%–93.4%, n=571) |
+| ResNet at random initialisation, probes | 84.4% (81.7%–86.8%) | 85.8% (83.2%–88.1%, n=788) | 86.7% (84.1%–88.9%, n=788) | 89.6% (86.9%–91.9%, n=571) |
+| ECGFounder frozen, probes | 82.9% (80.1%–85.3%) | 83.6% (80.9%–86.0%, n=788) | 85.0% (82.4%–87.3%, n=788) | 88.5% (85.6%–90.8%, n=571) |
+| EchoNext mini-model | 85.5% (82.9%–87.8%) | 86.2% (83.6%–88.4%, n=788) | 87.2% (84.7%–89.3%, n=788) | 89.6% (86.9%–91.9%, n=571) |
+| ECGFounder fine-tuned, seed 0 | 82.6% (79.8%–85.1%) | 83.1% (80.3%–85.6%, n=788) | 84.8% (82.1%–87.1%, n=788) | 88.7% (85.9%–91.1%, n=571) |
+| ECGFounder fine-tuned, seed 1 | 85.3% (82.6%–87.6%) | 85.7% (83.0%–87.9%, n=788) | 87.6% (85.1%–89.7%, n=788) | 90.7% (88.1%–92.8%, n=571) |
+| ECGFounder fine-tuned, seed 2 | 84.9% (82.2%–87.2%) | 85.4% (82.8%–87.7%, n=788) | 87.6% (85.1%–89.7%, n=788) | 89.1% (86.3%–91.4%, n=571) |
+<!-- /table -->
+
+At the inpatient threshold, sensitivity among emergency patients was 82.6% to 86.2%, closer to 90% than among outpatients, consistent with the smaller covariate shift (domain AUROC 0.768 on the embedding, against 0.836). Weighting on the embedding gave 88.5% to 91.5%, with lower bounds of 85.6% to 88.8% at 571 effective cases.
+
+Judged findings among emergency patients, weighted on the embedding, under the first reading of the effective size.
+
+<!-- table:anomalies_emergency -->
+| Arm | LVEF ≤ 45% | LV wall ≥ 13 mm | Aortic stenosis | Mitral regurgitation | Tricuspid regurgitation | RV dysfunction | PASP ≥ 45 mmHg | TR velocity ≥ 3.2 m/s | Repair |
+|---|---|---|---|---|---|---|---|---|---|
+| ResNet trained on EchoNext | 91.3%, n=273, passes | 93.4%, n=235, passes | 87.9%, n=66, fails | 92.4%, n=85, passes | 93.1%, n=99, passes | 94.5%, n=129, passes | 95.3%, n=174, passes | 85.0%, n=89, fails | holds |
+| ResNet at random initialisation, probes | 90.0%, n=273, passes | 93.4%, n=235, passes | 87.9%, n=66, fails | 89.1%, n=85, fails | 94.7%, n=99, passes | 91.0%, n=129, passes | 95.3%, n=174, passes | 75.5%, n=89, fails | holds |
+| ECGFounder frozen, probes | 87.4%, n=273, passes | 91.3%, n=235, passes | 84.8%, n=66, fails | 83.2%, n=85, fails | 92.4%, n=99, passes | 91.0%, n=129, passes | 92.4%, n=174, passes | 87.8%, n=89, fails | holds |
+| EchoNext mini-model | 86.8%, n=273, passes | 91.3%, n=235, passes | 84.8%, n=66, fails | 84.9%, n=85, fails | 95.4%, n=99, passes | 89.7%, n=129, passes | 94.9%, n=174, passes | 87.1%, n=89, fails | holds |
+| ECGFounder fine-tuned, seed 0 | 88.7%, n=273, passes | 95.4%, n=235, passes | 92.4%, n=66, passes | 90.8%, n=85, passes | 91.6%, n=99, passes | 91.0%, n=129, passes | 91.6%, n=174, passes | 83.7%, n=89, fails | holds |
+| ECGFounder fine-tuned, seed 1 | 89.7%, n=273, passes | 95.7%, n=235, passes | 86.4%, n=66, fails | 89.9%, n=85, passes | 90.1%, n=99, passes | 94.5%, n=129, passes | 92.4%, n=174, passes | 90.5%, n=89, passes | holds |
+| ECGFounder fine-tuned, seed 2 | 88.1%, n=273, passes | 91.3%, n=235, passes | 87.9%, n=66, fails | 89.1%, n=85, fails | 90.1%, n=99, passes | 93.1%, n=129, passes | 92.0%, n=174, passes | 83.0%, n=89, fails | holds |
+<!-- /table -->
+
+### What the composite flag costs
+
+Sensitivity, specificity, proportion of target ECGs flagged and PPV of the composite flag at the inpatient threshold and at the threshold weighted on the embedding. Sensitivity intervals are in the composite tables.
+
+<!-- table:flags -->
+| Arm | Target | Threshold | Sensitivity | Specificity | Flagged | PPV |
+|---|---|---|---|---|---|---|
+| ResNet trained on EchoNext | outpatient | inpatient threshold | 71.6% | 71.1% (67.8%–74.1%) | 39.8% | 46.0% (41.3%–50.7%) |
+| ResNet trained on EchoNext | outpatient | weighted | 89.3% | 42.5% (39.1%–46.0%) | 65.6% | 34.8% (31.4%–38.4%) |
+| ResNet at random initialisation, probes | outpatient | inpatient threshold | 78.6% | 57.4% (53.9%–60.8%) | 51.8% | 38.8% (34.8%–42.9%) |
+| ResNet at random initialisation, probes | outpatient | weighted | 87.8% | 29.1% (26.0%–32.3%) | 75.3% | 29.9% (26.8%–33.1%) |
+| ECGFounder frozen, probes | outpatient | inpatient threshold | 71.6% | 71.3% (68.1%–74.4%) | 39.7% | 46.2% (41.5%–51.0%) |
+| ECGFounder frozen, probes | outpatient | weighted | 89.7% | 42.5% (39.1%–46.0%) | 65.7% | 34.9% (31.5%–38.5%) |
+| EchoNext mini-model | outpatient | inpatient threshold | 72.7% | 71.1% (67.8%–74.1%) | 40.1% | 46.4% (41.7%–51.1%) |
+| EchoNext mini-model | outpatient | weighted | 89.7% | 37.4% (34.1%–40.9%) | 69.5% | 33.0% (29.7%–36.5%) |
+| ECGFounder fine-tuned, seed 0 | outpatient | inpatient threshold | 72.7% | 76.0% (72.9%–78.9%) | 36.4% | 51.0% (46.1%–56.0%) |
+| ECGFounder fine-tuned, seed 0 | outpatient | weighted | 87.1% | 49.1% (45.6%–52.6%) | 60.2% | 37.0% (33.4%–40.9%) |
+| ECGFounder fine-tuned, seed 1 | outpatient | inpatient threshold | 72.0% | 75.8% (72.6%–78.6%) | 36.4% | 50.5% (45.5%–55.5%) |
+| ECGFounder fine-tuned, seed 1 | outpatient | weighted | 88.2% | 49.7% (46.3%–53.2%) | 60.0% | 37.6% (34.0%–41.5%) |
+| ECGFounder fine-tuned, seed 2 | outpatient | inpatient threshold | 75.6% | 72.6% (69.4%–75.6%) | 39.8% | 48.7% (44.0%–53.5%) |
+| ECGFounder fine-tuned, seed 2 | outpatient | weighted | 89.3% | 45.8% (42.4%–49.3%) | 63.2% | 36.2% (32.6%–39.9%) |
+| ResNet trained on EchoNext | emergency | inpatient threshold | 86.2% | 61.0% (58.2%–63.8%) | 57.8% | 59.6% (56.7%–62.4%) |
+| ResNet trained on EchoNext | emergency | weighted | 91.5% | 49.0% (46.2%–51.9%) | 67.2% | 54.5% (51.8%–57.1%) |
+| ResNet at random initialisation, probes | emergency | inpatient threshold | 84.4% | 54.5% (51.7%–57.3%) | 61.0% | 55.3% (52.5%–58.1%) |
+| ResNet at random initialisation, probes | emergency | weighted | 89.6% | 41.0% (38.2%–43.8%) | 71.2% | 50.3% (47.7%–52.9%) |
+| ECGFounder frozen, probes | emergency | inpatient threshold | 82.9% | 60.0% (57.2%–62.8%) | 57.1% | 58.0% (55.1%–60.8%) |
+| ECGFounder frozen, probes | emergency | weighted | 88.5% | 49.6% (46.8%–52.5%) | 65.6% | 53.9% (51.2%–56.6%) |
+| EchoNext mini-model | emergency | inpatient threshold | 85.5% | 57.7% (54.8%–60.4%) | 59.6% | 57.4% (54.5%–60.2%) |
+| EchoNext mini-model | emergency | weighted | 89.6% | 49.5% (46.6%–52.3%) | 66.2% | 54.1% (51.4%–56.8%) |
+| ECGFounder fine-tuned, seed 0 | emergency | inpatient threshold | 82.6% | 65.4% (62.7%–68.1%) | 53.8% | 61.4% (58.4%–64.3%) |
+| ECGFounder fine-tuned, seed 0 | emergency | weighted | 88.7% | 52.9% (50.1%–55.7%) | 63.7% | 55.7% (52.9%–58.4%) |
+| ECGFounder fine-tuned, seed 1 | emergency | inpatient threshold | 85.3% | 61.3% (58.5%–64.0%) | 57.3% | 59.5% (56.6%–62.3%) |
+| ECGFounder fine-tuned, seed 1 | emergency | weighted | 90.7% | 48.7% (45.9%–51.5%) | 67.1% | 54.1% (51.4%–56.8%) |
+| ECGFounder fine-tuned, seed 2 | emergency | inpatient threshold | 84.9% | 61.9% (59.1%–64.6%) | 56.8% | 59.7% (56.8%–62.6%) |
+| ECGFounder fine-tuned, seed 2 | emergency | weighted | 89.1% | 51.1% (48.3%–54.0%) | 64.9% | 54.8% (52.1%–57.6%) |
+<!-- /table -->
+
+Among outpatients, weighting raised the proportion flagged from 36.4%–51.8% to 60.0%–75.3% across models; specificity fell from 57.4%–76.0% to 29.1%–49.7% and PPV from 38.8%–51.0% to 29.9%–37.6%. Among emergency patients, specificity fell from 54.5%–65.4% to 41.0%–52.9% and PPV from 55.3%–61.4% to 50.3%–55.7%. The weighted thresholds gained sensitivity by flagging more ECGs; no model gained it at constant specificity.
 
 ### Recalibration on labelled outpatients
 
@@ -164,13 +257,13 @@ At 80% coverage, sensitivity remained above 93% among inpatients for every model
 
 ## Discussion
 
-Weighting on the ECGFounder embedding raised composite sensitivity among outpatients to 87.1% to 89.7%, but for no model did the lower Wilson bound at 213 effective cases reach 85%, and the pre-specified criterion (A2) was not met. Fine-tuning did not reduce the loss sufficiently: fine-tuned ECGFounder lost 14.4 to 18.0 points of composite sensitivity among outpatients across seeds, against 18.4 for the trained ResNet, with upper bounds of 19.8 to 23.7 points against the 9 required (A1).
+Weighting on the ECGFounder embedding raised composite sensitivity among outpatients to 87.1% to 89.7%. For no model did the lower Wilson bound at 213 effective cases reach 85%; at that size the criterion requires an observed sensitivity above the 90% target, and a recalibration exactly on target fails it about one time in two. The outpatient result is therefore inconclusive rather than negative: at the 271 target cases two models met the criterion, and among the 788 emergency cases, where the test has a power of 0.94 under the first reading, all seven did. The gain is not free. The weighted thresholds flagged most outpatients, and their PPV fell below the inpatient threshold's for every model; whether that trade is acceptable depends on the cost of an echocardiogram after a flag, which this study does not measure. Fine-tuning did not reduce the loss sufficiently: fine-tuned ECGFounder lost 14.4 to 18.0 points of composite sensitivity among outpatients across seeds, against 18.4 for the trained ResNet, with upper bounds of 19.8 to 23.7 points against the 9 required (A1).
 
 Two explanations are compatible with the residual shortfall: the probability of SHD given the ECG may differ between care settings, which violates the covariate-shift assumption, or the embedding may not encode the features on which the settings differ. The bound of Han et al. (arXiv:2607.18088) on label-free class-conditional coverage is consistent with this result but is not demonstrated by it. The larger gain from the embedding than from age and sex suggests that the shift lies mainly in ECG morphology rather than in demographics. Thresholds recalibrated on 100 to 200 labelled outpatients reached a mean sensitivity of at least 90% for five of the seven models, at the cost of obtaining their echocardiograms.
 
 ## Limitations
 
-The audit of Han et al. on target labels, named in the protocol as a third reference, was not implemented; the thresholds recalibrated on labelled outpatients are the labelled reference instead. The protocol states the decision rule « calculé sur la taille effective »; its implementation as the smaller of the Kish effective size and the target case count is our interpretation. The weights use the frozen ECGFounder embedding for every model, including models that do not read it. The Columbia to Boston arm (A4) awaits credentialed access to MIMIC-IV-Echo. Otabor et al. (Eur Heart J Digit Health 2026, doi:10.1093/ehjdh/ztag147) report the EchoNext mini-model's discrimination and recalibration in 45,878 MIMIC-IV patients, without conformal thresholds or care settings. Three TRIPOD+AI items are not covered: the sample size justification, the handling of missing data (none in the covariates used) and a model-updating protocol for deployment.
+The audit of Han et al. on target labels, named in the protocol as a third reference, was not implemented; the thresholds recalibrated on labelled outpatients are the labelled reference instead. The protocol does not define the effective size; of the two readings reported, neither is the protocol's own. The emergency cohort was judged after the outpatient results were read, and its verdict is secondary. The protocol fixed no specificity or PPV bound, so the cost of the flag is described, not judged. The weights use the frozen ECGFounder embedding for every model, including models that do not read it. The Columbia to Boston arm (A4) awaits credentialed access to MIMIC-IV-Echo. Otabor et al. (Eur Heart J Digit Health 2026, doi:10.1093/ehjdh/ztag147) report the EchoNext mini-model's discrimination and recalibration in 45,878 MIMIC-IV patients, without conformal thresholds or care settings. Three TRIPOD+AI items are not covered: the sample size justification, the handling of missing data (none in the covariates used) and a model-updating protocol for deployment.
 
 ## Literature search
 
@@ -179,9 +272,11 @@ Searched on 20 October 2026. arXiv API: "EchoNext AND conformal", 0 records; "Ec
 ## Reproducibility
 
 ```bash
-# On the machine holding EchoNext and the four arms' scores (~/data/echonext-derived/scores)
-PYTORCH_ENABLE_MPS_FALLBACK=1 /usr/bin/lockf ~/.claude/locks/mac-gpu.lock \
-  .venv/bin/python scripts/echonext_finetune.py --seeds 0 1 2
-.venv/bin/python scripts/structure.py           # results/structure*.{csv,json}, then the tables here
+# Fine-tuning, on a machine holding EchoNext and a GPU
+PYTORCH_ENABLE_MPS_FALLBACK=1 .venv/bin/python scripts/echonext_finetune.py --seeds 0 1 2
+# On the machine holding EchoNext, the seven arms' scores and the ECGFounder embeddings
+ECS_EMBEDDING_STORE=~/data/echonext-derived/ecg-embeddings \
+  OMP_NUM_THREADS=3 OPENBLAS_NUM_THREADS=3 MKL_NUM_THREADS=3 \
+  .venv/bin/python scripts/structure.py         # results/structure*.{csv,json}, then the tables here
 .venv/bin/python scripts/structure.py --pages   # the tables alone, from the committed results
 ```

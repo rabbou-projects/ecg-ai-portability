@@ -8,6 +8,8 @@ inpatient, emergency and outpatient ECGs of the test split, as in
   the per-label conformal sets (``perlabel``), the same weighted by w(x) on
   each covariate set (``weighted``), and per-label thresholds refitted on n
   local labels (``local_labels``, the study's ladder);
+- for the first three, the specificity, share flagged and PPV of the flag
+  "class 1 in the set";
 - slope, intercept, ICI, Brier, AUGRC and the sensitivity kept at 80% coverage,
   each with a bootstrap interval.
 
@@ -57,10 +59,12 @@ from ecs.metrics import effective_sample_size
 from ecs.provenance import provenance_block
 from ecs.structure import (
     JUDGED_MIN_CASES,
+    READINGS,
     a2_verdict,
     calibration_cell,
     domain_weights,
     effective_cases,
+    flag_row,
     weighted_perlabel_sets,
 )
 from ecs.structure_report import load, tables
@@ -78,7 +82,9 @@ ARMS = (
 FINETUNED = ("ecgfounder_ft_s0", "ecgfounder_ft_s1", "ecgfounder_ft_s2")
 TARGETS = ("inpatient", "emergency", "outpatient")
 COVARIATES = ("age_sex", "tabular", "embedding")
-VERDICT_CONTEXT = "outpatient"
+# The protocol's target is the outpatients; the emergency patients are judged
+# by the same rule as a secondary target, added after the results were read.
+VERDICT_CONTEXTS = ("outpatient", "emergency")
 VERDICT_COVARIATES = "embedding"
 # A1: the published loss of composite sensitivity, inpatient threshold to outpatients,
 # for the study's ResNet (90% against 71.6%), and the bound the protocol sets on it.
@@ -134,7 +140,13 @@ def coverage_rows(
     head = {"arm": arm, "label": LABELS[k], "context": context}
     sets = conformal_sets(p_cal, y_cal, p_tgt, ALPHA)
     rows = [
-        {**head, "method": m, "interval": "wilson", **coverage_row(sets[m], y_tgt)}
+        {
+            **head,
+            "method": m,
+            "interval": "wilson",
+            **coverage_row(sets[m], y_tgt),
+            **flag_row(sets[m][:, 1], y_tgt),
+        }
         for m in ("plain", "perlabel")
     ]
     for name, w in weights.items():
@@ -147,6 +159,7 @@ def coverage_rows(
                 "covariates": name,
                 "interval": "wilson",
                 **coverage_row(weighted, y_tgt),
+                **flag_row(weighted[:, 1], y_tgt),
                 "ess_calibration_cases": effective_sample_size(case_weights),
                 "n_effective": effective_cases(int(y_tgt.sum()), case_weights),
                 "domain_auroc": w.domain_auroc,
@@ -206,21 +219,24 @@ def _row(rows: pd.DataFrame, label: str) -> dict[str, Any]:
     return {str(k): v for k, v in rows.loc[label].items()}
 
 
-def verdicts(table: pd.DataFrame, arms: list[str], judged: list[str]) -> dict[str, Any]:
-    """A2 per arm and covariate set on the outpatients, and A1 for each fine-tuned seed."""
+def verdicts(table: pd.DataFrame, arms: list[str], judged: dict[str, list[str]]) -> dict[str, Any]:
+    """A2 per target, size reading, arm and covariate set, and A1 for each fine-tuned seed."""
     out: dict[str, Any] = {"a2": {}, "a1": {}}
-    target = table[table["context"] == VERDICT_CONTEXT]
-    for arm in arms:
-        out["a2"][arm] = {}
-        for name in COVARIATES:
-            rows = target[
-                (target["arm"] == arm)
-                & (target["method"] == "weighted")
-                & (target["covariates"] == name)
-            ].set_index("label")
-            out["a2"][arm][name] = a2_verdict(
-                _row(rows, COMPOSITE), {k: _row(rows, k) for k in judged}
-            )
+    for context in VERDICT_CONTEXTS:
+        target = table[(table["context"] == context) & (table["method"] == "weighted")]
+        out["a2"][context] = {}
+        for reading, size in READINGS.items():
+            out["a2"][context][reading] = {}
+            for arm in arms:
+                out["a2"][context][reading][arm] = {}
+                for name in COVARIATES:
+                    rows = target[
+                        (target["arm"] == arm) & (target["covariates"] == name)
+                    ].set_index("label")
+                    out["a2"][context][reading][arm][name] = a2_verdict(
+                        _row(rows, COMPOSITE), {k: _row(rows, k) for k in judged[context]}, size
+                    )
+    target = table[table["context"] == "outpatient"]
     plain = target[(target["method"] == "plain") & (target["label"] == COMPOSITE)].set_index("arm")
     for arm in arms:
         row = plain.loc[arm]
@@ -286,7 +302,7 @@ def main() -> None:
         print(f"{context}: weights fitted", flush=True)
     coverage, calibration = measure(meta, arms, weights)
     table = pd.DataFrame(coverage)
-    judged = judged_labels(meta, cohorts.targets[VERDICT_CONTEXT])
+    judged = {c: judged_labels(meta, cohorts.targets[c]) for c in VERDICT_CONTEXTS}
     summary = {
         "distribution": DISTRIBUTION,
         "alpha": ALPHA,
@@ -295,8 +311,9 @@ def main() -> None:
         "calibration_n": len(cohorts.calibration),
         "targets_n": {c: len(r) for c, r in cohorts.targets.items()},
         "judged_labels": judged,
-        "verdict_context": VERDICT_CONTEXT,
+        "verdict_contexts": list(VERDICT_CONTEXTS),
         "verdict_covariates": VERDICT_COVARIATES,
+        "readings": READINGS,
         "domain": {
             c: {n: {"domain_auroc": w.domain_auroc, "cap": w.cap} for n, w in ws.items()}
             for c, ws in weights.items()

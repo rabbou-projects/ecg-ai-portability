@@ -17,7 +17,7 @@ import pytest
 
 from ecs.config import REPO_ROOT
 from ecs.echonext import COMPOSITE, LABELS
-from ecs.structure import a2_verdict
+from ecs.structure import READINGS, a2_verdict
 from ecs.structure_report import load, tables
 
 DOC = REPO_ROOT / "STRUCTURE.md"
@@ -66,34 +66,61 @@ def test_the_csv_holds_every_cell_of_the_grid(
 def test_the_verdicts_follow_from_the_csv(
     results: tuple[dict[str, Any], pd.DataFrame, dict[str, Any]],
 ) -> None:
-    """The A2 decision written to structure.json is the one the CSV's rows imply."""
+    """Each A2 decision written to structure.json, per target and size reading, is the one
+    the CSV's rows imply."""
     summary, coverage, _ = results
-    weighted = coverage[(coverage["method"] == "weighted") & (coverage["context"] == "outpatient")]
-    for arm in summary["arms"]:
-        for name in COVARIATES:
-            rows = weighted[(weighted["arm"] == arm) & (weighted["covariates"] == name)]
-            by_label = {str(r["label"]): dict(r) for _, r in rows.iterrows()}
-            expected = a2_verdict(
-                by_label[COMPOSITE], {k: by_label[k] for k in summary["judged_labels"]}
-            )
-            assert summary["a2"][arm][name]["repair_holds"] == expected["repair_holds"]
-            assert summary["a2"][arm][name]["composite_pass"] == expected["composite_pass"]
-            assert summary["a2"][arm][name]["composite_interval"] == pytest.approx(
-                expected["composite_interval"]
-            )
-            assert summary["a2"][arm][name]["anomaly_pass"] == expected["anomaly_pass"]
+    assert summary["verdict_contexts"] == ["outpatient", "emergency"]
+    assert summary["readings"] == READINGS
+    for context in summary["verdict_contexts"]:
+        judged = summary["judged_labels"][context]
+        weighted = coverage[(coverage["method"] == "weighted") & (coverage["context"] == context)]
+        for reading, size in READINGS.items():
+            for arm in summary["arms"]:
+                for name in COVARIATES:
+                    rows = weighted[(weighted["arm"] == arm) & (weighted["covariates"] == name)]
+                    by_label = {str(r["label"]): dict(r) for _, r in rows.iterrows()}
+                    expected = a2_verdict(
+                        by_label[COMPOSITE], {k: by_label[k] for k in judged}, size
+                    )
+                    written = summary["a2"][context][reading][arm][name]
+                    assert written["repair_holds"] == expected["repair_holds"]
+                    assert written["composite_pass"] == expected["composite_pass"]
+                    assert written["composite_interval"] == pytest.approx(
+                        expected["composite_interval"]
+                    )
+                    assert written["anomaly_pass"] == expected["anomaly_pass"]
 
 
-def test_the_judged_anomalies_are_those_with_fifty_outpatient_cases(
+def test_each_flag_agrees_with_the_coverage_of_its_row(
     results: tuple[dict[str, Any], pd.DataFrame, dict[str, Any]],
 ) -> None:
-    """The protocol judges an anomaly at 50 test outpatient cases or more, fixed in advance."""
+    """Share flagged = cases flagged + non-cases flagged, and PPV = cases flagged / flagged:
+    a specificity or PPV computed on another flag than the sensitivity would break both."""
+    _, coverage, _ = results
+    rows = coverage[coverage["method"].isin(["plain", "perlabel", "weighted"])]
+    assert rows["specificity"].notna().all()
+    n_neg = rows["n"] - rows["n_pos"]
+    # Pulmonary regurgitation has no outpatient case: no sensitivity, no case flagged.
+    cases_flagged = (rows["coverage_pos"] * rows["n_pos"]).where(rows["n_pos"] > 0, 0.0)
+    flagged = cases_flagged + (1 - rows["specificity"]) * n_neg
+    assert (flagged / rows["n"]).to_numpy() == pytest.approx(rows["flagged"].to_numpy())
+    has_flag = rows["flagged"] > 0
+    assert (cases_flagged / flagged)[has_flag].to_numpy() == pytest.approx(
+        rows.loc[has_flag, "ppv"].to_numpy()
+    )
+
+
+def test_the_judged_anomalies_are_those_with_fifty_target_cases(
+    results: tuple[dict[str, Any], pd.DataFrame, dict[str, Any]],
+) -> None:
+    """The protocol judges an anomaly at 50 test cases or more in its target, fixed in advance."""
     summary, coverage, _ = results
-    plain = coverage[
-        (coverage["method"] == "plain")
-        & (coverage["context"] == "outpatient")
-        & (coverage["arm"] == summary["arms"][0])
-    ].set_index("label")
-    judged = [k for k in LABELS[:-1] if plain.loc[k, "n_pos"] >= 50]
-    assert summary["judged_labels"] == judged
-    assert len(judged) >= 1
+    for context in summary["verdict_contexts"]:
+        plain = coverage[
+            (coverage["method"] == "plain")
+            & (coverage["context"] == context)
+            & (coverage["arm"] == summary["arms"][0])
+        ].set_index("label")
+        judged = [k for k in LABELS[:-1] if plain.loc[k, "n_pos"] >= 50]
+        assert summary["judged_labels"][context] == judged
+        assert len(judged) >= 1
