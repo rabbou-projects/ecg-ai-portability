@@ -174,10 +174,10 @@ def test_the_direction_ppv_md_states_is_the_file_s(result: dict[str, Any]) -> No
     assert s["columbia"]["prior"]["share_over_announced"] == 0.0
     assert s["chongqing"]["prior"]["share_over_announced"] == 1.0
     assert all(0.4 <= x <= 0.6 for x in shares_over(result, small=False))
-    section = ppv_md_section()
     large = shares_over(result, small=False)
-    assert f"{min(large):.2f} to {max(large):.2f} of the draws" in section
-    assert f"up to {max(shares_over(result, small=True)):.2f} of the draws" in section
+    printed = numbers_in(ppv_md_section())
+    for x in (min(large), max(large), max(shares_over(result, small=True))):
+        assert f"{x:.2f}" in printed
 
 
 def lists_in(value: Any) -> list[int]:
@@ -200,6 +200,20 @@ def test_no_row_carries_per_record_values(
 def ppv_md_section() -> str:
     text = (REPO_ROOT / "PPV.md").read_text()
     return text[text.index("\n## ") :]
+
+
+def numbers_in(text: str) -> set[str]:
+    """Every figure the prose prints, as written: 0.79, 99%, −0.001, 272.
+
+    Table rows are left out, so a figure the tables hold cannot stand in for the prose.
+    """
+    prose = "\n".join(line for line in text.splitlines() if not line.startswith("|"))
+    return set(re.findall(r"−?\d+(?:\.\d+)?%?", prose))
+
+
+def missing_from(text: str, figures: list[str]) -> list[str]:
+    printed = numbers_in(text)
+    return [f for f in figures if f not in printed]
 
 
 def pts(x: float) -> str:
@@ -271,39 +285,58 @@ def test_ppv_md_prints_no_figure_the_file_does_not_hold(result: dict[str, Any]) 
     assert printed <= held, printed - held
 
 
-def ppv_md_summary() -> str:
+def ppv_md_part(start: str, stop: str) -> str:
     section = ppv_md_section()
-    return section[section.index("### Summary") : section.index("### Objective")]
+    return section[section.index(start) : section.index(stop)]
 
 
-def test_ppv_md_opens_on_a_summary_with_its_findings(result: dict[str, Any]) -> None:
-    """The section opens like an abstract: design and main findings, each figure from the file."""
+def ppv_md_abstract() -> str:
+    return ppv_md_part("### Abstract", "### 1. Introduction")
+
+
+def test_ppv_md_follows_the_article_s_plan() -> None:
+    """Structured abstract, then an Introduction ending on one objective sentence."""
+    section = ppv_md_section()
+    heads = ["### Abstract", "### 1. Introduction", "### 2. Methods", "### 3. Results"]
+    heads.append("### 4. Discussion")
+    assert [section.index(h) for h in heads] == sorted(section.index(h) for h in heads)
+    abstract = ppv_md_abstract()
+    labels = ["**Background.**", "**Methods.**", "**Results.**", "**Conclusions.**"]
+    assert [abstract.index(x) for x in labels] == sorted(abstract.index(x) for x in labels)
+    objective = ppv_md_part("### 1. Introduction", "### 2. Methods").strip().split("\n\n")[-1]
+    assert objective.startswith("We ")
+    assert objective.count(". ") == 0 and objective.endswith(".")
+    assert not re.search(r"\d", objective)
+
+
+def test_ppv_md_abstract_prints_the_file(result: dict[str, Any]) -> None:
+    """Each figure of the abstract is the file's, formatted here."""
     from ecs.repairs import MIN_EVENTS
 
-    section = ppv_md_section()
-    assert section.index("### Summary") < section.index("### Objective")
-    summary = ppv_md_summary()
     s = result["summary"]
     at100 = {h: next(b for b in s[h]["budgets"] if b["n"] == 100) for h in MAIN}
     held = [
-        f"{sum(s[h]['transfers'] for h in MAIN)} transfers",
-        f"{min(result['budgets'])} to {max(result['budgets'])} ECGs, drawn by patient",
-        f"{result['draws']} draws",
-        f"fewer than {('ten' if MIN_EVENTS == 10 else str(MIN_EVENTS))} events",
-        ", ".join(pts(s[h]["prior"]["abs_error"]["median"]) for h in MAIN[:2])
-        + f" and {pts(s['chongqing']['prior']['abs_error']['median'])} points",
-        *(
-            ", ".join(pts(at100[h][f"{m}_abs_error"]["median"]) for h in MAIN[:2])
-            + f" and {pts(at100['chongqing'][f'{m}_abs_error']['median'])} points"
-            for m in ("recalibrated", "resampled")
-        ),
-        ", ".join(pct(at100[h]["sensitivity"]["resampled"]) for h in MAIN[:2])
-        + f" and {pct(at100['chongqing']['sensitivity']['resampled'])} of cases",
-        ", ".join(f"{at100[h]['certified_share_threshold_exists']:.3f}" for h in MAIN[:2])
-        + f" and {at100['chongqing']['certified_share_threshold_exists']:.3f} of draws",
+        str(sum(s[h]["transfers"] for h in MAIN)),
+        str(min(result["budgets"])),
+        str(max(result["budgets"])),
+        str(result["draws"]),
     ]
-    missing = [f for f in held if f not in summary]
-    assert not missing, missing
+    for h in MAIN:
+        b = at100[h]
+        held += [
+            pts(s[h]["prior"]["abs_error"]["median"]),
+            f"{b['mean_cases_labelled']:.1f}",
+            pts(b["recalibrated_abs_error"]["median"]),
+            pts(b["resampled_abs_error"]["median"]),
+            pts(b["resampled_finite_abs_error"]["median"]),
+            f"{flags_all_among_defined(b):.2f}",
+            pct(b["sensitivity"]["resampled"]),
+            f"{b['certified_share_threshold_exists']:.3f}",
+            f"{b['certified_violation_rate_given_threshold']:.3f}",
+        ]
+    assert not missing_from(ppv_md_abstract(), held), missing_from(ppv_md_abstract(), held)
+    assert MIN_EVENTS == 10
+    assert "fewer than ten events" in ppv_md_section()
 
 
 SITE_NAMES = {
@@ -345,7 +378,7 @@ def flags_all_among_defined(b: dict[str, Any]) -> float:
 
 
 def error_table(result: dict[str, Any]) -> list[str]:
-    """Table 1 of PPV.md, one row per site, formatted from the file."""
+    """Table 2 of PPV.md, one row per site, formatted from the file."""
     rows = []
     for h, name in SITE_NAMES.items():
         s = result["summary"][h]
@@ -370,7 +403,7 @@ def error_table(result: dict[str, Any]) -> list[str]:
 
 
 def net_benefit_table(result: dict[str, Any]) -> list[str]:
-    """Table 2 of PPV.md, one row per site, formatted from the file.
+    """Table 3 of PPV.md, one row per site, formatted from the file.
 
     Recalibration keeps the source threshold, so its net benefit is the prevalence
     correction's and the two share a column.
@@ -459,50 +492,23 @@ def test_ppv_md_budget_claims_are_the_file_s(result: dict[str, Any]) -> None:
     assert caption in ppv_md_section()
     found = at["chongqing"][100]["certified_share_threshold_exists"] * 200
     assert found == pytest.approx(2)
-    section = ppv_md_section()
-    summary = ppv_md_summary()
-    for phrase, where in (
-        (
-            ", ".join(pts(finite[h]) for h in MAIN[:2]) + f" and {pts(finite['chongqing'])} points",
-            section,
-        ),
-        (
-            ", ".join(pct(at[h][100]["resampled_finite_sensitivity"]) for h in MAIN[:2])
-            + f" and {pct(at['chongqing'][100]['resampled_finite_sensitivity'])}",
-            section,
-        ),
-        (
-            ", ".join(f"{nine[h]:.0f}" for h in MAIN[:2]) + f" and {nine['chongqing']:.0f} labels",
-            summary,
-        ),
-        (
-            f"nine cases from {nine['columbia']:.0f} labels at Columbia, "
-            f"{nine['beth_israel']:.0f} at Beth Israel and {nine['chongqing']:.0f} at Chongqing",
-            section,
-        ),
-        (
-            ", ".join(
-                f"{at[h][100]['certified_violation_rate_given_threshold']:.3f}" for h in MAIN[:2]
-            )
-            + f" and {at['chongqing'][100]['certified_violation_rate_given_threshold']:.3f}",
-            summary,
-        ),
-        (
-            f"from {columbia[0]:.3f} with {result['budgets'][0]} labels to {columbia[-1]:.3f} with "
-            f"{result['budgets'][-1]}",
-            section,
-        ),
-        (
-            f"controls the refitted threshold flagged every patient in "
-            f"{flags_all_among_defined(at['control'][100]):.2f} of the draws",
-            section,
-        ),
-    ):
-        assert phrase in where, phrase
+    refitted = ppv_md_part("#### 3.2", "#### 3.3")
+    figures = [f"{nine[h]:.0f}" for h in MAIN]
+    for h in MAIN:
+        figures += [pts(finite[h]), pct(at[h][100]["resampled_finite_sensitivity"])]
+    figures.append(f"{flags_all_among_defined(at['control'][100]):.2f}")
+    figures += [str(min(below_half.values())), str(max(below_half.values()))]
+    assert not missing_from(refitted, figures), missing_from(refitted, figures)
+    certified = ppv_md_part("#### 3.3", "#### 3.4")
+    figures = [f"{columbia[0]:.3f}", f"{columbia[-1]:.3f}"]
+    figures += [f"{at[h][100]['certified_violation_rate_given_threshold']:.3f}" for h in MAIN]
+    assert not missing_from(certified, figures), missing_from(certified, figures)
+    nine_sorted = sorted(nine.values())
+    assert f"{nine_sorted[0]:.0f} to {nine_sorted[-1]:.0f} labels" in ppv_md_section()
 
 
 def test_ppv_md_post_hoc_claims_are_the_file_s(result: dict[str, Any]) -> None:
-    """The prose under Tables 1 and 2: case counts, flag-everyone shares, net benefit gaps."""
+    """The prose around Tables 2 and 3: case counts, flag-everyone shares, net benefit gaps."""
     s = result["summary"]
     at = {h: next(b for b in s[h]["budgets"] if b["n"] == TABLE_BUDGET) for h in SITE_NAMES}
     few = {h for h in SITE_NAMES if at[h]["mean_cases_labelled"] < 2}
@@ -524,18 +530,15 @@ def test_ppv_md_post_hoc_claims_are_the_file_s(result: dict[str, Any]) -> None:
     reserve = [
         s[h]["prior"]["abs_error"]["median"] for h in SITE_NAMES if h not in (*MAIN, "control")
     ]
-    section = ppv_md_section()
-    for phrase in (
-        f"{min(shares):.2f} to {max(shares):.2f} of the draws in which it was placed",
-        f"where it was {abs(gap['ptbxl']):.3f} lower",
-        f"{pts(min(reserve))} to {pts(max(reserve))} points at the eight reserve sites",
-        ", ".join(f"{at[h]['mean_cases_labelled']:.1f}" for h in MAIN[:2])
-        + f" and {at['chongqing']['mean_cases_labelled']:.1f} cases",
-        ", ".join(f"{flags_all_among_defined(at[h]):.2f}" for h in MAIN[:2])
-        + f" and {flags_all_among_defined(at['chongqing']):.2f} of the draws in which it was"
-        " placed",
-        f"was {signed(at['columbia']['net_benefit']['resampled'])} at Columbia, against "
-        f"{signed(s['columbia']['references']['treat_all_net_benefit'])} for flagging every "
-        f"patient and {signed(s['columbia']['prior']['net_benefit'])} for recalibration",
-    ):
-        assert phrase in section, phrase
+    figures = [
+        f"{min(shares):.2f}",
+        f"{max(shares):.2f}",
+        f"{abs(gap['ptbxl']):.3f}",
+        signed(at["columbia"]["net_benefit"]["resampled"]),
+        signed(s["columbia"]["references"]["treat_all_net_benefit"]),
+        signed(s["columbia"]["prior"]["net_benefit"]),
+    ]
+    reserve_prose = ppv_md_part("#### 3.5", "#### 3.6")
+    assert not missing_from(reserve_prose, figures), missing_from(reserve_prose, figures)
+    label_free = ppv_md_part("#### 3.1", "#### 3.2")
+    assert f"{pts(min(reserve))} to {pts(max(reserve))} points" in label_free
