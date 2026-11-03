@@ -110,12 +110,15 @@ def composite_table(summary: dict[str, Any], coverage: pd.DataFrame, context: st
                 f"{pct(w['coverage_pos'])} ({pct(low)}–{pct(high)}, n={int(w['n_effective'])})"
             )
         rows.append(row)
-    header = ["Arm", "Single threshold", *(f"Weighted on {v}" for v in COVARIATE_NAMES.values())]
+    header = ["Arm", "Inpatient threshold", *(f"Weighted on {v}" for v in COVARIATE_NAMES.values())]
     return _table(header, rows)
 
 
 def anomaly_table(summary: dict[str, Any], coverage: pd.DataFrame, context: str) -> str:
-    """A2 per judged anomaly, weighted on the embedding, at the smaller size: Holm verdict."""
+    """A2 per judged finding, weighted on the embedding, at the smaller size.
+
+    An asterisk marks a finding whose Holm-corrected test rejects a sensitivity of 80%.
+    """
     judged = summary["judged_labels"][context]
     rows = []
     for arm in summary["arms"]:
@@ -130,16 +133,16 @@ def anomaly_table(summary: dict[str, Any], coverage: pd.DataFrame, context: str)
                 method="weighted",
                 covariates=summary["verdict_covariates"],
             )
-            mark = "passes" if verdict["anomaly_pass"][label] else "fails"
-            row.append(f"{pct(w['coverage_pos'])}, n={int(w['n_effective'])}, {mark}")
-        row.append("holds" if verdict["repair_holds"] else "fails")
+            mark = "*" if verdict["anomaly_pass"][label] else ""
+            row.append(f"{pct(w['coverage_pos'])}{mark} (n={int(w['n_effective'])})")
+        row.append("met" if verdict["repair_holds"] else "not met")
         rows.append(row)
-    header = ["Arm", *(LABEL_NAMES[k] for k in judged), "Repair"]
+    header = ["Arm", *(LABEL_NAMES[k] for k in judged), "Criterion"]
     return _table(header, rows)
 
 
 def readings_table(summary: dict[str, Any]) -> str:
-    """The composite interval and the repair's verdict on the embedding, per size reading."""
+    """The composite interval and the A2 verdict on the embedding, per size reading."""
     columns = [(c, r) for c in summary["verdict_contexts"] for r in summary["readings"]]
     rows = []
     for arm in summary["arms"]:
@@ -147,10 +150,10 @@ def readings_table(summary: dict[str, Any]) -> str:
         for context, reading in columns:
             v = summary["a2"][context][reading][arm][summary["verdict_covariates"]]
             low, high = v["composite_interval"]
-            mark = "holds" if v["repair_holds"] else "fails"
+            mark = "met" if v["repair_holds"] else "not met"
             row.append(
-                f"{pct(low)}–{pct(high)}, n={v['n']}, "
-                f"{v['anomalies_passed']}/{v['anomalies_judged']} anomalies, {mark}"
+                f"{pct(low)}–{pct(high)} (n={v['n']}), "
+                f"{v['anomalies_passed']} of {v['anomalies_judged']} findings, {mark}"
             )
         rows.append(row)
     names = {"min_cases_kish": "smaller of cases and Kish size", "target_cases": "target cases"}
@@ -159,7 +162,7 @@ def readings_table(summary: dict[str, Any]) -> str:
 
 
 def flags_table(summary: dict[str, Any], coverage: pd.DataFrame) -> str:
-    """What the composite flag costs: sensitivity, specificity, share flagged and PPV.
+    """Sensitivity, specificity, share flagged and PPV of the composite flag.
 
     Sensitivity is shown without its interval, which the composite tables give at the
     size the verdict uses.
@@ -171,7 +174,7 @@ def flags_table(summary: dict[str, Any], coverage: pd.DataFrame) -> str:
     rows = []
     for context in summary["verdict_contexts"]:
         for arm in summary["arms"]:
-            for method, label in (("plain", "inpatient threshold"), ("weighted", "weighted")):
+            for method, label in (("plain", "inpatient"), ("weighted", "weighted on embedding")):
                 where = (
                     {"covariates": summary["verdict_covariates"]} if method == "weighted" else {}
                 )
