@@ -61,7 +61,7 @@ Une anomalie était jugée quand elle comptait au moins 50 cas dans la cible. Ch
 
 La recalibration pondérée sur la représentation atteint le critère principal quand deux conditions sont réunies : l'intervalle de Wilson à 95 % de la sensibilité composite est compris entre 85 % et 95 %, et une majorité stricte des anomalies jugées dépasse 80 % de sensibilité dans un test du score unilatéral à 0,025, avec la correction de Holm [10].
 
-Les deux conditions sont évaluées à la taille d'échantillon effective, que le protocole ne définit pas. La pondération concentre le seuil sur peu de cas de calibration ; la taille effective de Kish est le nombre de cas de poids égaux auquel l'échantillon pondéré équivaut [11]. Deux lectures sont rapportées. La lecture principale prend la plus petite de la taille de Kish et du nombre de cas cibles, puisque le seuil pondéré repose sur les cas de calibration : 213 chez les patients ambulatoires. La seconde prend le nombre de cas cibles, sur lesquels la sensibilité est mesurée : 271. La condition composite a un plancher et un plafond : à 213 cas, elle n'est remplie que pour une sensibilité observée de 90,1 % à 92,0 %, car la borne basse n'atteint 85 % qu'au-dessus de 90 % et la borne haute dépasse 95 % au-dessus de 92,0 %. Une recalibration exactement sur la cible la remplit donc avec une probabilité de 0,40, et de 0,61 à 271 cas (tableau 5).
+Les deux conditions sont évaluées à la taille d'échantillon effective, que le protocole ne définit pas. La pondération concentre le seuil sur peu de cas de calibration ; la taille effective de Kish est le nombre de cas de poids égaux auquel l'échantillon pondéré équivaut [11]. Deux lectures sont rapportées. La lecture principale prend la plus petite de la taille de Kish et du nombre de cas cibles, puisque le seuil pondéré repose sur les cas de calibration : 213 chez les patients ambulatoires. La seconde prend le nombre de cas cibles, sur lesquels la sensibilité est mesurée : 271. La condition composite a un plancher et un plafond : à 213 cas, elle n'est remplie que pour une sensibilité observée de 90,1 % à 92,0 %, car la borne basse n'atteint 85 % qu'au-dessus de 90 % et la borne haute dépasse 95 % au-dessus de 92,0 %. Une recalibration exactement sur la cible la remplit donc avec une probabilité de 0,40, et de 0,61 à 271 cas (tableau 2).
 
 Le protocole jugeait le critère chez les patients ambulatoires. La cohorte des urgences, dont les poids et les sensibilités ont été calculés dans la même analyse, est rapportée comme cible secondaire, jugée selon les mêmes règles après la lecture des résultats ambulatoires. Huit anomalies comptaient au moins 50 cas aux urgences : FEVG inférieure ou égale à 45 % (310), épaisseur pariétale du VG d'au moins 13 mm (392), rétrécissement aortique modéré ou plus (66), insuffisance mitrale (119), insuffisance tricuspide (131) et dysfonction du VD (145), PAPS d'au moins 45 mmHg (275) et vitesse maximale d'IT d'au moins 3,2 m/s (147). La taille effective selon la lecture principale est de 571, à laquelle la probabilité ci-dessus est de 0,94.
 
@@ -79,6 +79,8 @@ Pour chaque modèle, anomalie et lieu de soins, la calibration est rapportée pa
 
 ### 3.1 Le décalage de covariables était le plus grand chez les patients ambulatoires et sur la représentation
 
+Le classifieur de domaine séparait mieux les patients ambulatoires que les patients des urgences des patients hospitalisés de calibration, et mieux sur la représentation que sur l'âge et le sexe (tableau 1). Entre deux échantillons de patients hospitalisés, il ne faisait pas mieux que le hasard.
+
 Tableau 1. ASC du classifieur de domaine séparant les patients hospitalisés de calibration de chaque cible, par jeu de covariables. La ligne des patients hospitalisés compare deux échantillons d'une même population et sert de témoin négatif.
 
 | Cible | âge, sexe | mesures ECG | représentation |
@@ -87,174 +89,55 @@ Tableau 1. ASC du classifieur de domaine séparant les patients hospitalisés de
 | urgences | 0,552 | 0,590 | 0,768 |
 | patients ambulatoires | 0,576 | 0,728 | 0,836 |
 
-### 3.2 La pondération sur la représentation rapprochait de 90 % la sensibilité chez les patients ambulatoires
+### 3.2 La pondération sur la représentation rapprochait la sensibilité de 90 %
 
-Tableau 2. Sensibilité composite chez les patients ambulatoires avec son intervalle de Wilson à 95 %. Pour les seuils pondérés, l'intervalle et n sont à la taille effective selon la lecture principale.
+Au seuil des patients hospitalisés, les sept modèles détectaient 71,6 % à 78,6 % des patients ambulatoires avec une CS et 82,6 % à 86,2 % des patients des urgences avec une CS (figure 1). La pondération sur l'âge et le sexe modifiait la sensibilité ambulatoire de 3 points au plus, et la pondération sur les mesures ECG donnait 78,6 % à 83,8 %. La pondération sur la représentation donnait 87,1 % à 89,7 % chez les patients ambulatoires, avec des bornes basses de 81,7 % à 84,9 % à 213 cas effectifs, et 88,5 % à 91,5 % chez les patients des urgences, avec des bornes basses de 85,6 % à 88,8 % à 571.
 
-| Modèle | Seuil des patients hospitalisés | Pondéré sur l'âge et le sexe | Pondéré sur les mesures ECG | Pondéré sur la représentation |
-|---|---|---|---|---|
-| ResNet entraîné sur EchoNext | 71,6 % (65,9 %–76,6 %) | 74,2 % (68,6 %–79,0 %, n=271) | 79,3 % (74,1 %–83,7 %, n=271) | 89,3 % (84,3 %–92,7 %, n=213) |
-| ResNet à l'initialisation aléatoire, sondes | 78,6 % (73,3 %–83,1 %) | 81,5 % (76,5 %–85,7 %, n=271) | 83,8 % (78,9 %–87,7 %, n=271) | 87,8 % (82,7 %–91,5 %, n=213) |
-| ECGFounder figé, sondes | 71,6 % (65,9 %–76,6 %) | 72,7 % (67,1 %–77,7 %, n=271) | 78,6 % (73,3 %–83,1 %, n=271) | 89,7 % (84,9 %–93,1 %, n=213) |
-| Mini-modèle EchoNext | 72,7 % (67,1 %–77,7 %) | 73,8 % (68,3 %–78,7 %, n=271) | 82,3 % (77,3 %–86,4 %, n=271) | 89,7 % (84,9 %–93,1 %, n=213) |
-| ECGFounder affiné, graine 0 | 72,7 % (67,1 %–77,7 %) | 73,8 % (68,3 %–78,7 %, n=271) | 80,1 % (74,9 %–84,4 %, n=271) | 87,1 % (81,7 %–90,7 %, n=213) |
-| ECGFounder affiné, graine 1 | 72,0 % (66,3 %–77,0 %) | 73,4 % (67,9 %–78,3 %, n=271) | 81,5 % (76,5 %–85,7 %, n=271) | 88,2 % (83,2 %–91,9 %, n=213) |
-| ECGFounder affiné, graine 2 | 75,6 % (70,2 %–80,4 %) | 77,9 % (72,5 %–82,4 %, n=271) | 81,2 % (76,1 %–85,4 %, n=271) | 89,3 % (84,3 %–92,7 %, n=213) |
+![Figure 1](results/figures/structure_sensitivity_fr.png)
 
-La pondération sur l'âge et le sexe modifiait la sensibilité d'au plus 3 points. La pondération sur les mesures ECG récupérait une partie de la perte, et la pondération sur la représentation amenait chaque modèle à moins de 3 points de 90 %, avec des bornes basses de 81,7 % à 84,9 %.
+Figure 1. Sensibilité composite pour la CS de chaque modèle au seuil des patients hospitalisés et aux trois seuils pondérés, avec intervalles de Wilson à 95 % ; pour les seuils pondérés, l'intervalle est à la taille effective selon la lecture principale. La bande grisée est l'intervalle de 85 % à 95 % de la condition composite, la ligne pointillée la cible de 90 %. Valeurs par modèle : tableaux S1 et S3 du supplément.
 
-Tableau 3. Sensibilité chez les patients ambulatoires pour chaque anomalie jugée, pondérée sur la représentation, avec la taille effective selon la lecture principale. Les anomalies suivies d'un astérisque sont celles dont le test avec correction de Holm rejette une sensibilité de 80 %. Critère : les deux conditions de la section 2.5.
-
-| Modèle | FEVG ≤ 45 % | Paroi du VG ≥ 13 mm | Rétrécissement aortique | PAPS ≥ 45 mmHg | Critère |
-|---|---|---|---|---|---|
-| ResNet entraîné sur EchoNext | 88,6 % (n=70) | 89,7 %* (n=101) | 100,0 %* (n=29) | 82,5 % (n=63) | non atteint |
-| ResNet à l'initialisation aléatoire, sondes | 87,1 % (n=70) | 91,1 %* (n=101) | 94,1 % (n=29) | 95,2 %* (n=63) | non atteint |
-| ECGFounder figé, sondes | 92,9 %* (n=70) | 95,9 %* (n=101) | 100,0 %* (n=29) | 90,5 %* (n=63) | non atteint |
-| Mini-modèle EchoNext | 84,3 % (n=70) | 91,8 %* (n=101) | 98,0 %* (n=29) | 84,1 % (n=63) | non atteint |
-| ECGFounder affiné, graine 0 | 94,3 %* (n=70) | 91,8 %* (n=101) | 100,0 %* (n=29) | 81,0 % (n=63) | non atteint |
-| ECGFounder affiné, graine 1 | 91,4 % (n=70) | 89,0 % (n=101) | 100,0 %* (n=29) | 82,5 % (n=63) | non atteint |
-| ECGFounder affiné, graine 2 | 92,9 %* (n=70) | 89,7 %* (n=101) | 100,0 %* (n=29) | 85,7 % (n=63) | non atteint |
+Pondérée sur la représentation, chaque anomalie jugée chez les patients ambulatoires était détectée dans au moins 81,0 % de ses cas, et le rétrécissement aortique dans 94,1 % à 100,0 % (tableau S2). Chez les patients des urgences, la vitesse maximale d'IT d'au moins 3,2 m/s était l'anomalie la moins bien détectée, à 75,5 % à 90,5 % (tableau S4).
 
 ### 3.3 Le verdict ambulatoire dépendait de la lecture de la taille effective
 
-Tableau 4. Bornes de l'intervalle de Wilson à 95 % de la sensibilité composite pondérée sur la représentation, taille à laquelle les deux conditions sont jugées, nombre d'anomalies jugées dont le test rejette 80 %, et critère, selon chaque lecture.
+À 213 cas ambulatoires, aucun modèle n'atteignait le critère. À 271, deux l'atteignaient : ECGFounder figé, dont l'intervalle allait de 85,5 % à 92,8 % avec quatre anomalies sur quatre au-dessus de 80 %, et ECGFounder affiné sous la graine 2, à 85,1 % à 92,4 % avec trois sur quatre (tableau S5). Chez les patients des urgences, les sept modèles l'atteignaient selon les deux lectures.
 
-| Modèle | Ambulatoires, plus petit des cas et de la taille de Kish | Ambulatoires, cas cibles | Urgences, plus petit des cas et de la taille de Kish | Urgences, cas cibles |
-|---|---|---|---|---|
-| ResNet entraîné sur EchoNext | 84,3 %–92,7 % (n=213), 2 anomalies sur 4, non atteint | 85,1 %–92,4 % (n=271), 2 anomalies sur 4, non atteint | 88,8 %–93,4 % (n=571), 6 anomalies sur 8, atteint | 89,3 %–93,2 % (n=788), 6 anomalies sur 8, atteint |
-| ResNet à l'initialisation aléatoire, sondes | 82,7 %–91,5 % (n=213), 2 anomalies sur 4, non atteint | 83,4 %–91,2 % (n=271), 3 anomalies sur 4, non atteint | 86,9 %–91,9 % (n=571), 5 anomalies sur 8, atteint | 87,3 %–91,5 % (n=788), 6 anomalies sur 8, atteint |
-| ECGFounder figé, sondes | 84,9 %–93,1 % (n=213), 4 anomalies sur 4, non atteint | 85,5 %–92,8 % (n=271), 4 anomalies sur 4, atteint | 85,6 %–90,8 % (n=571), 5 anomalies sur 8, atteint | 86,0 %–90,5 % (n=788), 5 anomalies sur 8, atteint |
-| Mini-modèle EchoNext | 84,9 %–93,1 % (n=213), 2 anomalies sur 4, non atteint | 85,5 %–92,8 % (n=271), 2 anomalies sur 4, non atteint | 86,9 %–91,9 % (n=571), 5 anomalies sur 8, atteint | 87,3 %–91,5 % (n=788), 5 anomalies sur 8, atteint |
-| ECGFounder affiné, graine 0 | 81,7 %–90,7 % (n=213), 3 anomalies sur 4, non atteint | 82,6 %–90,6 % (n=271), 3 anomalies sur 4, non atteint | 85,9 %–91,1 % (n=571), 7 anomalies sur 8, atteint | 86,3 %–90,7 % (n=788), 7 anomalies sur 8, atteint |
-| ECGFounder affiné, graine 1 | 83,2 %–91,9 % (n=213), 1 anomalie sur 4, non atteint | 83,8 %–91,5 % (n=271), 3 anomalies sur 4, non atteint | 88,1 %–92,8 % (n=571), 7 anomalies sur 8, atteint | 88,5 %–92,6 % (n=788), 7 anomalies sur 8, atteint |
-| ECGFounder affiné, graine 2 | 84,3 %–92,7 % (n=213), 3 anomalies sur 4, non atteint | 85,1 %–92,4 % (n=271), 3 anomalies sur 4, atteint | 86,3 %–91,4 % (n=571), 5 anomalies sur 8, atteint | 86,7 %–91,1 % (n=788), 6 anomalies sur 8, atteint |
+La condition composite a un plafond autant qu'un plancher, et aux tailles ambulatoires l'intervalle des sensibilités observées qui la remplissent est étroit (tableau 2). À 213 cas, il exclut 90 % même : une recalibration exactement sur la cible la remplit avec une probabilité de 0,40, contre 0,94 aux 571 cas des urgences.
 
-Chez les patients ambulatoires, ECGFounder figé (85,5 %–92,8 %, quatre anomalies sur quatre) et ECGFounder affiné sous la graine 2 (85,1 %–92,4 %, trois sur quatre) atteignaient le critère à 271 cas ; aucun modèle ne l'atteignait à 213. Chez les patients des urgences, tous les modèles l'atteignaient selon les deux lectures.
+Tableau 2. Sensibilités composites observées pour lesquelles l'intervalle de Wilson à 95 % est compris entre 85 % et 95 %, à la taille de chaque lecture, et probabilité d'une telle observation quand la sensibilité réelle est de 90 %.
 
-Tableau 5. Sensibilités composites observées pour lesquelles l'intervalle de Wilson à 95 % est compris entre 85 % et 95 %, à la taille de chaque lecture, et probabilité d'une telle observation quand la sensibilité réelle est de 90 %.
-
-| Cible | Lecture | n | Sensibilité satisfaisant la condition | Probabilité |
+| Cible | Lecture | n | Sensibilité remplissant la condition | Probabilité |
 |---|---|---|---|---|
 | patients ambulatoires | plus petit des cas et de la taille de Kish | 213 | 90,1 %–92,0 % | 0,40 |
 | patients ambulatoires | cas cibles | 271 | 89,3 %–92,3 % | 0,61 |
 | urgences | plus petit des cas et de la taille de Kish | 571 | 88,1 %–93,2 % | 0,94 |
 | urgences | cas cibles | 788 | 87,6 %–93,4 % | 0,99 |
 
-### 3.4 Chez les patients des urgences, le critère était atteint pour tous les modèles
+### 3.4 Les seuils pondérés signalaient plus de patients, à une spécificité plus basse
 
-Tableau 6. Sensibilité composite chez les patients des urgences, comme au tableau 2.
+Les seuils pondérés atteignaient ces sensibilités en signalant plus de patients (tableau 3). Chez les patients ambulatoires, la proportion de signalés passait de 36,4 %–51,8 % à 60,0 %–75,3 % selon les modèles, la spécificité baissait de 57,4 %–76,0 % à 29,1 %–49,7 %, et la VPP de 38,8 %–51,0 % à 29,9 %–37,6 %. Chez les patients des urgences, la spécificité baissait de 54,5 %–65,4 % à 41,0 %–52,9 %. Aucun modèle ne gagnait en sensibilité à spécificité constante (tableau S6).
 
-| Modèle | Seuil des patients hospitalisés | Pondéré sur l'âge et le sexe | Pondéré sur les mesures ECG | Pondéré sur la représentation |
-|---|---|---|---|---|
-| ResNet entraîné sur EchoNext | 86,2 % (83,6 %–88,4 %) | 87,1 % (84,5 %–89,2 %, n=788) | 87,9 % (85,5 %–90,0 %, n=788) | 91,5 % (88,8 %–93,4 %, n=571) |
-| ResNet à l'initialisation aléatoire, sondes | 84,4 % (81,7 %–86,8 %) | 85,8 % (83,2 %–88,1 %, n=788) | 86,7 % (84,1 %–88,9 %, n=788) | 89,6 % (86,9 %–91,9 %, n=571) |
-| ECGFounder figé, sondes | 82,9 % (80,1 %–85,3 %) | 83,6 % (80,9 %–86,0 %, n=788) | 85,0 % (82,4 %–87,3 %, n=788) | 88,5 % (85,6 %–90,8 %, n=571) |
-| Mini-modèle EchoNext | 85,5 % (82,9 %–87,8 %) | 86,2 % (83,6 %–88,4 %, n=788) | 87,2 % (84,7 %–89,3 %, n=788) | 89,6 % (86,9 %–91,9 %, n=571) |
-| ECGFounder affiné, graine 0 | 82,6 % (79,8 %–85,1 %) | 83,1 % (80,3 %–85,6 %, n=788) | 84,8 % (82,1 %–87,1 %, n=788) | 88,7 % (85,9 %–91,1 %, n=571) |
-| ECGFounder affiné, graine 1 | 85,3 % (82,6 %–87,6 %) | 85,7 % (83,0 %–87,9 %, n=788) | 87,6 % (85,1 %–89,7 %, n=788) | 90,7 % (88,1 %–92,8 %, n=571) |
-| ECGFounder affiné, graine 2 | 84,9 % (82,2 %–87,2 %) | 85,4 % (82,8 %–87,7 %, n=788) | 87,6 % (85,1 %–89,7 %, n=788) | 89,1 % (86,3 %–91,4 %, n=571) |
+Tableau 3. Le signalement composite au seuil des patients hospitalisés et au seuil pondéré sur la représentation : plus basse et plus haute valeur parmi les sept modèles.
 
-Au seuil des patients hospitalisés, la sensibilité chez les patients des urgences était de 82,6 % à 86,2 %, plus proche de 90 % que chez les patients ambulatoires, en accord avec un décalage de covariables plus faible (ASC de domaine de 0,768 sur la représentation, contre 0,836). La pondération sur la représentation donnait 88,5 % à 91,5 %, avec des bornes basses de 85,6 % à 88,8 % à 571 cas effectifs.
-
-Tableau 7. Anomalies jugées chez les patients des urgences, comme au tableau 3.
-
-| Modèle | FEVG ≤ 45 % | Paroi du VG ≥ 13 mm | Rétrécissement aortique | Insuffisance mitrale | Insuffisance tricuspide | Dysfonction du VD | PAPS ≥ 45 mmHg | Vitesse d'IT ≥ 3,2 m/s | Critère |
-|---|---|---|---|---|---|---|---|---|---|
-| ResNet entraîné sur EchoNext | 91,3 %* (n=273) | 93,4 %* (n=235) | 87,9 % (n=66) | 92,4 %* (n=85) | 93,1 %* (n=99) | 94,5 %* (n=129) | 95,3 %* (n=174) | 85,0 % (n=89) | atteint |
-| ResNet à l'initialisation aléatoire, sondes | 90,0 %* (n=273) | 93,4 %* (n=235) | 87,9 % (n=66) | 89,1 % (n=85) | 94,7 %* (n=99) | 91,0 %* (n=129) | 95,3 %* (n=174) | 75,5 % (n=89) | atteint |
-| ECGFounder figé, sondes | 87,4 %* (n=273) | 91,3 %* (n=235) | 84,8 % (n=66) | 83,2 % (n=85) | 92,4 %* (n=99) | 91,0 %* (n=129) | 92,4 %* (n=174) | 87,8 % (n=89) | atteint |
-| Mini-modèle EchoNext | 86,8 %* (n=273) | 91,3 %* (n=235) | 84,8 % (n=66) | 84,9 % (n=85) | 95,4 %* (n=99) | 89,7 %* (n=129) | 94,9 %* (n=174) | 87,1 % (n=89) | atteint |
-| ECGFounder affiné, graine 0 | 88,7 %* (n=273) | 95,4 %* (n=235) | 92,4 %* (n=66) | 90,8 %* (n=85) | 91,6 %* (n=99) | 91,0 %* (n=129) | 91,6 %* (n=174) | 83,7 % (n=89) | atteint |
-| ECGFounder affiné, graine 1 | 89,7 %* (n=273) | 95,7 %* (n=235) | 86,4 % (n=66) | 89,9 %* (n=85) | 90,1 %* (n=99) | 94,5 %* (n=129) | 92,4 %* (n=174) | 90,5 %* (n=89) | atteint |
-| ECGFounder affiné, graine 2 | 88,1 %* (n=273) | 91,3 %* (n=235) | 87,9 % (n=66) | 89,1 % (n=85) | 90,1 %* (n=99) | 93,1 %* (n=129) | 92,0 %* (n=174) | 83,0 % (n=89) | atteint |
-
-### 3.5 Les seuils pondérés signalaient plus de patients, à une spécificité plus basse
-
-Tableau 8. Sensibilité, spécificité, proportion d'ECG signalés et VPP du signalement composite au seuil des patients hospitalisés et au seuil pondéré sur la représentation. Les intervalles de la sensibilité figurent aux tableaux 2 et 6.
-
-| Modèle | Cible | Seuil | Sensibilité | Spécificité | Signalés | VPP |
-|---|---|---|---|---|---|---|
-| ResNet entraîné sur EchoNext | patients ambulatoires | patients hospitalisés | 71,6 % | 71,1 % (67,8 %–74,1 %) | 39,8 % | 46,0 % (41,3 %–50,7 %) |
-| ResNet entraîné sur EchoNext | patients ambulatoires | pondéré sur la représentation | 89,3 % | 42,5 % (39,1 %–46,0 %) | 65,6 % | 34,8 % (31,4 %–38,4 %) |
-| ResNet à l'initialisation aléatoire, sondes | patients ambulatoires | patients hospitalisés | 78,6 % | 57,4 % (53,9 %–60,8 %) | 51,8 % | 38,8 % (34,8 %–42,9 %) |
-| ResNet à l'initialisation aléatoire, sondes | patients ambulatoires | pondéré sur la représentation | 87,8 % | 29,1 % (26,0 %–32,3 %) | 75,3 % | 29,9 % (26,8 %–33,1 %) |
-| ECGFounder figé, sondes | patients ambulatoires | patients hospitalisés | 71,6 % | 71,3 % (68,1 %–74,4 %) | 39,7 % | 46,2 % (41,5 %–51,0 %) |
-| ECGFounder figé, sondes | patients ambulatoires | pondéré sur la représentation | 89,7 % | 42,5 % (39,1 %–46,0 %) | 65,7 % | 34,9 % (31,5 %–38,5 %) |
-| Mini-modèle EchoNext | patients ambulatoires | patients hospitalisés | 72,7 % | 71,1 % (67,8 %–74,1 %) | 40,1 % | 46,4 % (41,7 %–51,1 %) |
-| Mini-modèle EchoNext | patients ambulatoires | pondéré sur la représentation | 89,7 % | 37,4 % (34,1 %–40,9 %) | 69,5 % | 33,0 % (29,7 %–36,5 %) |
-| ECGFounder affiné, graine 0 | patients ambulatoires | patients hospitalisés | 72,7 % | 76,0 % (72,9 %–78,9 %) | 36,4 % | 51,0 % (46,1 %–56,0 %) |
-| ECGFounder affiné, graine 0 | patients ambulatoires | pondéré sur la représentation | 87,1 % | 49,1 % (45,6 %–52,6 %) | 60,2 % | 37,0 % (33,4 %–40,9 %) |
-| ECGFounder affiné, graine 1 | patients ambulatoires | patients hospitalisés | 72,0 % | 75,8 % (72,6 %–78,6 %) | 36,4 % | 50,5 % (45,5 %–55,5 %) |
-| ECGFounder affiné, graine 1 | patients ambulatoires | pondéré sur la représentation | 88,2 % | 49,7 % (46,3 %–53,2 %) | 60,0 % | 37,6 % (34,0 %–41,5 %) |
-| ECGFounder affiné, graine 2 | patients ambulatoires | patients hospitalisés | 75,6 % | 72,6 % (69,4 %–75,6 %) | 39,8 % | 48,7 % (44,0 %–53,5 %) |
-| ECGFounder affiné, graine 2 | patients ambulatoires | pondéré sur la représentation | 89,3 % | 45,8 % (42,4 %–49,3 %) | 63,2 % | 36,2 % (32,6 %–39,9 %) |
-| ResNet entraîné sur EchoNext | urgences | patients hospitalisés | 86,2 % | 61,0 % (58,2 %–63,8 %) | 57,8 % | 59,6 % (56,7 %–62,4 %) |
-| ResNet entraîné sur EchoNext | urgences | pondéré sur la représentation | 91,5 % | 49,0 % (46,2 %–51,9 %) | 67,2 % | 54,5 % (51,8 %–57,1 %) |
-| ResNet à l'initialisation aléatoire, sondes | urgences | patients hospitalisés | 84,4 % | 54,5 % (51,7 %–57,3 %) | 61,0 % | 55,3 % (52,5 %–58,1 %) |
-| ResNet à l'initialisation aléatoire, sondes | urgences | pondéré sur la représentation | 89,6 % | 41,0 % (38,2 %–43,8 %) | 71,2 % | 50,3 % (47,7 %–52,9 %) |
-| ECGFounder figé, sondes | urgences | patients hospitalisés | 82,9 % | 60,0 % (57,2 %–62,8 %) | 57,1 % | 58,0 % (55,1 %–60,8 %) |
-| ECGFounder figé, sondes | urgences | pondéré sur la représentation | 88,5 % | 49,6 % (46,8 %–52,5 %) | 65,6 % | 53,9 % (51,2 %–56,6 %) |
-| Mini-modèle EchoNext | urgences | patients hospitalisés | 85,5 % | 57,7 % (54,8 %–60,4 %) | 59,6 % | 57,4 % (54,5 %–60,2 %) |
-| Mini-modèle EchoNext | urgences | pondéré sur la représentation | 89,6 % | 49,5 % (46,6 %–52,3 %) | 66,2 % | 54,1 % (51,4 %–56,8 %) |
-| ECGFounder affiné, graine 0 | urgences | patients hospitalisés | 82,6 % | 65,4 % (62,7 %–68,1 %) | 53,8 % | 61,4 % (58,4 %–64,3 %) |
-| ECGFounder affiné, graine 0 | urgences | pondéré sur la représentation | 88,7 % | 52,9 % (50,1 %–55,7 %) | 63,7 % | 55,7 % (52,9 %–58,4 %) |
-| ECGFounder affiné, graine 1 | urgences | patients hospitalisés | 85,3 % | 61,3 % (58,5 %–64,0 %) | 57,3 % | 59,5 % (56,6 %–62,3 %) |
-| ECGFounder affiné, graine 1 | urgences | pondéré sur la représentation | 90,7 % | 48,7 % (45,9 %–51,5 %) | 67,1 % | 54,1 % (51,4 %–56,8 %) |
-| ECGFounder affiné, graine 2 | urgences | patients hospitalisés | 84,9 % | 61,9 % (59,1 %–64,6 %) | 56,8 % | 59,7 % (56,8 %–62,6 %) |
-| ECGFounder affiné, graine 2 | urgences | pondéré sur la représentation | 89,1 % | 51,1 % (48,3 %–54,0 %) | 64,9 % | 54,8 % (52,1 %–57,6 %) |
-
-Chez les patients ambulatoires, la pondération faisait passer la proportion de signalés de 36,4 %–51,8 % à 60,0 %–75,3 % selon les modèles ; la spécificité baissait de 57,4 %–76,0 % à 29,1 %–49,7 % et la VPP de 38,8 %–51,0 % à 29,9 %–37,6 %. Chez les patients des urgences, la spécificité baissait de 54,5 %–65,4 % à 41,0 %–52,9 % et la VPP de 55,3 %–61,4 % à 50,3 %–55,7 %. Aucun modèle ne gagnait en sensibilité à spécificité constante.
-
-### 3.6 Recalibration du seuil sur des étiquettes locales
-
-Tableau 9. Sensibilité composite dans une moitié des patients ambulatoires quand les seuils par anomalie étaient recalibrés sur n patients ambulatoires étiquetés de l'autre moitié : moyenne et 10e à 90e percentiles sur 200 tirages. La moyenne peut sortir de cet intervalle quand un dixième des tirages signale presque tous les ECG ; avec 25 ou 50 patients ambulatoires, peu de cas sont tirés et le seuil signale souvent tous les ECG.
-
-| Modèle | 25 étiquettes | 50 étiquettes | 100 étiquettes | 200 étiquettes | 400 étiquettes |
+| Cible | Seuil | Sensibilité | Spécificité | Signalés | VPP |
 |---|---|---|---|---|---|
-| ResNet entraîné sur EchoNext | 98,9 % (99,3 %–100,0 %) | 94,5 % (89,1 %–100,0 %) | 93,4 % (89,7 %–99,3 %) | 92,7 % (90,5 %–95,6 %) | 92,1 % (92,0 %–92,0 %) |
-| ResNet à l'initialisation aléatoire, sondes | 98,5 % (94,2 %–100,0 %) | 90,7 % (81,8 %–100,0 %) | 88,8 % (83,9 %–94,2 %) | 87,3 % (84,7 %–89,1 %) | 86,7 % (85,4 %–87,6 %) |
-| ECGFounder figé, sondes | 99,3 % (100,0 %–100,0 %) | 96,0 % (88,2 %–100,0 %) | 95,3 % (88,3 %–100,0 %) | 95,2 % (91,2 %–99,3 %) | 94,8 % (92,7 %–95,6 %) |
-| Mini-modèle EchoNext | 99,2 % (99,3 %–100,0 %) | 96,8 % (93,5 %–100,0 %) | 97,6 % (94,9 %–99,3 %) | 97,3 % (94,9 %–99,3 %) | 97,3 % (94,9 %–99,3 %) |
-| ECGFounder affiné, graine 0 | 98,8 % (97,8 %–100,0 %) | 93,7 % (87,6 %–100,0 %) | 91,5 % (88,3 %–97,8 %) | 90,6 % (88,3 %–94,9 %) | 89,7 % (89,1 %–89,8 %) |
-| ECGFounder affiné, graine 1 | 98,9 % (96,4 %–100,0 %) | 93,8 % (83,2 %–100,0 %) | 92,8 % (83,9 %–99,3 %) | 91,5 % (83,9 %–95,6 %) | 91,1 % (90,7 %–92,0 %) |
-| ECGFounder affiné, graine 2 | 98,6 % (97,7 %–100,0 %) | 92,5 % (83,9 %–100,0 %) | 89,4 % (83,9 %–97,8 %) | 88,2 % (83,9 %–92,0 %) | 87,2 % (86,9 %–87,6 %) |
+| patients ambulatoires | patients hospitalisés | 71,6 %–78,6 % | 57,4 %–76,0 % | 36,4 %–51,8 % | 38,8 %–51,0 % |
+| patients ambulatoires | pondéré sur la représentation | 87,1 %–89,7 % | 29,1 %–49,7 % | 60,0 %–75,3 % | 29,9 %–37,6 % |
+| urgences | patients hospitalisés | 82,6 %–86,2 % | 54,5 %–65,4 % | 53,8 %–61,0 % | 55,3 %–61,4 % |
+| urgences | pondéré sur la représentation | 88,5 %–91,5 % | 41,0 %–52,9 % | 63,7 %–71,2 % | 50,3 %–55,7 % |
 
-### 3.7 Calibration et prédiction sélective
+### 3.5 Recalibration du seuil sur des étiquettes locales
 
-Tableau 10. Calibration et prédiction sélective pour le composite chez les patients hospitalisés et ambulatoires, avec intervalles bootstrap.
+Les seuils recalibrés sur 100 ou 200 patients ambulatoires étiquetés atteignaient une sensibilité moyenne d'au moins 90 % pour cinq des sept modèles (tableau S7). Avec 25 ou 50 patients ambulatoires étiquetés, peu de cas étaient tirés, et le seuil recalibré signalait souvent tous les ECG.
 
-| Modèle | Cible | Pente | Ordonnée | ICI | Brier | AUGRC | Sens. à 80 % conservés |
-|---|---|---|---|---|---|---|---|
-| ResNet entraîné sur EchoNext | patients hospitalisés | 0,74 (0,68–0,81) | -0,25 (-0,36–-0,15) | 0,076 (0,061–0,092) | 0,180 (0,170–0,190) | 0,123 (0,114–0,133) | 95,1 % (93,7 %–96,2 %) |
-| ResNet entraîné sur EchoNext | patients ambulatoires | 0,82 (0,71–0,94) | -0,41 (-0,59–-0,23) | 0,069 (0,052–0,090) | 0,138 (0,125–0,153) | 0,108 (0,094–0,120) | 76,3 % (71,6 %–82,2 %) |
-| ResNet à l'initialisation aléatoire, sondes | patients hospitalisés | 0,98 (0,88–1,10) | -0,11 (-0,20–-0,02) | 0,023 (0,014–0,043) | 0,192 (0,184–0,200) | 0,138 (0,128–0,149) | 94,8 % (93,4 %–96,0 %) |
-| ResNet à l'initialisation aléatoire, sondes | patients ambulatoires | 1,08 (0,89–1,27) | -0,74 (-0,89–-0,62) | 0,139 (0,120–0,162) | 0,173 (0,164–0,185) | 0,168 (0,152–0,184) | 81,3 % (76,4 %–86,0 %) |
-| ECGFounder figé, sondes | patients hospitalisés | 0,88 (0,80–0,95) | -0,16 (-0,26–-0,06) | 0,045 (0,032–0,062) | 0,182 (0,174–0,191) | 0,124 (0,115–0,135) | 93,8 % (92,1 %–95,2 %) |
-| ECGFounder figé, sondes | patients ambulatoires | 0,90 (0,77–1,04) | -0,43 (-0,59–-0,28) | 0,069 (0,053–0,093) | 0,148 (0,136–0,161) | 0,112 (0,098–0,125) | 76,8 % (71,4 %–82,5 %) |
-| Mini-modèle EchoNext | patients hospitalisés | 0,98 (0,89–1,07) | 0,18 (0,08–0,26) | 0,032 (0,022–0,049) | 0,184 (0,176–0,194) | 0,131 (0,122–0,142) | 95,5 % (93,9 %–96,6 %) |
-| Mini-modèle EchoNext | patients ambulatoires | 1,04 (0,91–1,20) | -0,16 (-0,33–-0,02) | 0,035 (0,023–0,058) | 0,141 (0,129–0,155) | 0,118 (0,104–0,133) | 78,4 % (72,6 %–83,3 %) |
-| ECGFounder affiné, graine 0 | patients hospitalisés | 0,94 (0,86–1,02) | -0,39 (-0,49–-0,30) | 0,068 (0,056–0,085) | 0,179 (0,172–0,188) | 0,117 (0,108–0,128) | 93,8 % (92,2 %–95,2 %) |
-| ECGFounder affiné, graine 0 | patients ambulatoires | 1,00 (0,86–1,18) | -0,66 (-0,82–-0,51) | 0,106 (0,085–0,127) | 0,146 (0,135–0,159) | 0,096 (0,084–0,111) | 77,7 % (71,9 %–83,1 %) |
-| ECGFounder affiné, graine 1 | patients hospitalisés | 0,87 (0,80–0,94) | -0,13 (-0,24–-0,03) | 0,054 (0,041–0,070) | 0,175 (0,166–0,184) | 0,119 (0,111–0,130) | 93,9 % (92,4 %–95,4 %) |
-| ECGFounder affiné, graine 1 | patients ambulatoires | 0,93 (0,80–1,07) | -0,31 (-0,47–-0,15) | 0,053 (0,036–0,075) | 0,136 (0,124–0,150) | 0,099 (0,086–0,113) | 78,1 % (73,2 %–83,7 %) |
-| ECGFounder affiné, graine 2 | patients hospitalisés | 0,83 (0,76–0,90) | -0,05 (-0,15–0,05) | 0,050 (0,037–0,066) | 0,176 (0,168–0,186) | 0,122 (0,113–0,132) | 93,2 % (91,6 %–94,7 %) |
-| ECGFounder affiné, graine 2 | patients ambulatoires | 0,97 (0,83–1,12) | -0,39 (-0,56–-0,23) | 0,063 (0,045–0,084) | 0,136 (0,124–0,149) | 0,114 (0,101–0,128) | 79,6 % (74,6 %–84,9 %) |
+### 3.6 Calibration et prédiction sélective
 
-À 80 % de couverture, la sensibilité restait supérieure à 93 % chez les patients hospitalisés pour tous les modèles et allait de 76,3 % à 81,3 % chez les patients ambulatoires. La confiance dérivée des patients hospitalisés n'identifiait pas les cas ambulatoires manqués au seuil.
+Quand le cinquième des ECG le moins confiant était mis de côté, la sensibilité parmi les autres restait supérieure à 93 % chez les patients hospitalisés pour tous les modèles, et allait de 76,3 % à 81,3 % chez les patients ambulatoires (tableau S8). La confiance dérivée des patients hospitalisés n'identifiait pas les cas ambulatoires manqués au seuil.
 
-### 3.8 L'affinage d'ECGFounder ne réduisait pas la perte
+### 3.7 L'affinage d'ECGFounder ne réduisait pas la perte
 
-Tableau 11. Sensibilité composite chez les patients ambulatoires au seuil des patients hospitalisés, avec sa borne basse de Wilson, et perte par rapport à 90 % avec sa borne haute.
-
-| Modèle | Sensibilité, patients ambulatoires | Perte, points | Perte d'au plus 9 points |
-|---|---|---|---|
-| ResNet entraîné sur EchoNext | 71,6 % (borne basse 65,9 %) | 18,4 (jusqu'à 24,1) | non |
-| ResNet à l'initialisation aléatoire, sondes | 78,6 % (borne basse 73,3 %) | 11,4 (jusqu'à 16,7) | non |
-| ECGFounder figé, sondes | 71,6 % (borne basse 65,9 %) | 18,4 (jusqu'à 24,1) | non |
-| Mini-modèle EchoNext | 72,7 % (borne basse 67,1 %) | 17,3 (jusqu'à 22,9) | non |
-| ECGFounder affiné, graine 0 | 72,7 % (borne basse 67,1 %) | 17,3 (jusqu'à 22,9) | non |
-| ECGFounder affiné, graine 1 | 72,0 % (borne basse 66,3 %) | 18,0 (jusqu'à 23,7) | non |
-| ECGFounder affiné, graine 2 | 75,6 % (borne basse 70,2 %) | 14,4 (jusqu'à 19,8) | non |
+ECGFounder affiné détectait 72,0 % à 75,6 % des patients ambulatoires avec une CS au seuil des patients hospitalisés selon les trois graines, soit une perte de 14,4 à 18,0 points contre 18,4 pour le ResNet. La borne haute de la perte dépassait 9 points pour chaque graine (tableau S9) : la réduction de moitié préspécifiée n'était pas atteinte.
 
 ## 4. Discussion
 
@@ -288,7 +171,7 @@ Il s'agit d'une étude rétrospective sur des données publiques et désidentifi
 
 **Éthique.** Cette étude est une analyse secondaire de données ECG publiques et désidentifiées, sans aucun contact avec des patients. L'essai DISCOVERY et ses analyses ont été approuvés par l'Institutional Review Board du NewYork-Presbyterian Hospital/Columbia University Irving Medical Center, comme l'indique la page PhysioNet d'EchoNext ; aucun numéro d'approbation n'y figure. Aucune tentative de réidentification n'a été faite.
 
-**Code et chiffres.** `scripts/structure.py` calcule les fichiers de résultats de `results/` à partir des scores et produit à partir d'eux chaque tableau de la version anglaise ; `tests/test_structure_results.py` échoue si un tableau ou un pourcentage du texte anglais s'écarte de ces fichiers, et `tests/test_structure_fr.py` échoue si cette traduction ne porte pas les mêmes chiffres. Les sommes SHA-256 des modèles affinés sont enregistrées avec leurs scores.
+**Code et chiffres.** `scripts/structure.py` calcule les fichiers de résultats de `results/` à partir des scores ; `scripts/structure_pages.py` produit à partir d'eux chaque tableau de la version anglaise et de son supplément, `STRUCTURE_SUPPLEMENT.md`, ainsi que la figure 1. `tests/test_structure_results.py` échoue si un tableau ou un pourcentage de l'un des textes anglais s'écarte de ces fichiers, et `tests/test_structure_fr.py` échoue si cette traduction ne porte pas les mêmes chiffres. Les sommes SHA-256 des modèles affinés sont enregistrées avec leurs scores.
 
 ## Références
 

@@ -1,8 +1,8 @@
-"""The tables of STRUCTURE.md, rendered from the three committed result files of study P-A.
+"""The tables of STRUCTURE.md and its supplement, rendered from the committed results of P-A.
 
-STRUCTURE.md prints each table exactly as ``tables`` renders it, and
-tests/test_structure_results.py holds the document to that: a figure changes in
-the document only by re-running ``scripts/structure.py`` and re-rendering.
+The two documents print each table exactly as ``tables`` renders it, and
+tests/test_structure_results.py holds both to that: a figure changes in
+a document only by re-running ``scripts/structure.py`` and re-rendering.
 """
 
 from __future__ import annotations
@@ -16,7 +16,15 @@ import pandas as pd
 from .config import RESULTS_DIR
 from .echonext import COMPOSITE
 
-__all__ = ["ARM_NAMES", "LABEL_NAMES", "load", "pct", "tables"]
+__all__ = [
+    "ARM_NAMES",
+    "COVARIATE_NAMES",
+    "LABEL_NAMES",
+    "composite_points",
+    "load",
+    "pct",
+    "tables",
+]
 
 ARM_NAMES = {
     "resnet": "ResNet trained on EchoNext",
@@ -91,12 +99,25 @@ def domain_table(summary: dict[str, Any]) -> str:
     return _table(["Target", *COVARIATE_NAMES.values()], rows)
 
 
-def composite_table(summary: dict[str, Any], coverage: pd.DataFrame, context: str) -> str:
-    """A2 on the composite: the single threshold and each weighting, at the smaller size."""
-    rows = []
+def composite_points(
+    summary: dict[str, Any], coverage: pd.DataFrame, context: str
+) -> dict[str, dict[str, tuple[float, float, float, int | None]]]:
+    """Composite sensitivity, its Wilson bounds and the size they rest on, per arm and threshold.
+
+    The inpatient threshold is judged on the target's cases; each weighting at the smaller
+    of the cases and the Kish size, the size of the verdict's primary reading.
+    """
+    points: dict[str, dict[str, tuple[float, float, float, int | None]]] = {}
     for arm in summary["arms"]:
         plain = _cell(coverage, arm=arm, label=COMPOSITE, context=context, method="plain")
-        row = [ARM_NAMES[arm], _interval(plain)]
+        points[arm] = {
+            "plain": (
+                plain["coverage_pos"],
+                plain["coverage_pos_low"],
+                plain["coverage_pos_high"],
+                None,
+            )
+        }
         for name in COVARIATE_NAMES:
             w = _cell(
                 coverage,
@@ -107,9 +128,19 @@ def composite_table(summary: dict[str, Any], coverage: pd.DataFrame, context: st
                 covariates=name,
             )
             low, high = summary["a2"][context][PRIMARY_READING][arm][name]["composite_interval"]
-            row.append(
-                f"{pct(w['coverage_pos'])} ({pct(low)}–{pct(high)}, n={int(w['n_effective'])})"
-            )
+            points[arm][name] = (w["coverage_pos"], low, high, int(w["n_effective"]))
+    return points
+
+
+def composite_table(summary: dict[str, Any], coverage: pd.DataFrame, context: str) -> str:
+    """A2 on the composite: the single threshold and each weighting, at the smaller size."""
+    rows = []
+    for arm, points in composite_points(summary, coverage, context).items():
+        value, low, high, _ = points["plain"]
+        row = [ARM_NAMES[arm], f"{pct(value)} ({pct(low)}–{pct(high)})"]
+        for name in COVARIATE_NAMES:
+            value, low, high, n = points[name]
+            row.append(f"{pct(value)} ({pct(low)}–{pct(high)}, n={n})")
         rows.append(row)
     header = ["Arm", "Inpatient threshold", *(f"Weighted on {v}" for v in COVARIATE_NAMES.values())]
     return _table(header, rows)
@@ -215,6 +246,34 @@ def flags_table(summary: dict[str, Any], coverage: pd.DataFrame) -> str:
     return _table(header, rows)
 
 
+def flag_summary_table(summary: dict[str, Any], coverage: pd.DataFrame) -> str:
+    """The composite flag per target and threshold: lowest and highest value across arms."""
+    rows = []
+    for context in summary["verdict_contexts"]:
+        for method, label in (("plain", "inpatient"), ("weighted", "weighted on embedding")):
+            where = {"covariates": summary["verdict_covariates"]} if method == "weighted" else {}
+            cells = pd.DataFrame(
+                [
+                    _cell(
+                        coverage, arm=arm, label=COMPOSITE, context=context, method=method, **where
+                    )
+                    for arm in summary["arms"]
+                ]
+            )
+            rows.append(
+                [
+                    context,
+                    label,
+                    *(
+                        f"{pct(cells[key].min())}–{pct(cells[key].max())}"
+                        for key in ("coverage_pos", "specificity", "flagged", "ppv")
+                    ),
+                ]
+            )
+    header = ["Target", "Threshold", "Sensitivity", "Specificity", "Flagged", "PPV"]
+    return _table(header, rows)
+
+
 def ladder_table(summary: dict[str, Any], coverage: pd.DataFrame) -> str:
     """Composite sensitivity on outpatients with per-label thresholds refitted on n labels."""
     rungs = sorted(
@@ -293,6 +352,7 @@ def tables(
         "readings": readings_table(summary),
         "power": power_table(summary),
         "flags": flags_table(summary, coverage),
+        "flag_summary": flag_summary_table(summary, coverage),
         "ladder": ladder_table(summary, coverage),
         "calibration": calibration_table(summary, calibration),
         "a1": a1_table(summary),

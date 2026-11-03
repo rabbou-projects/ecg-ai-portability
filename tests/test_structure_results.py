@@ -1,9 +1,9 @@
-"""STRUCTURE.md against the committed results of study P-A.
+"""STRUCTURE.md and its supplement against the committed results of study P-A.
 
 EchoNext cannot be committed, so nothing here recomputes a score.  What is held:
-every table of the document is what ``ecs.structure_report`` renders from the
-three result files, every one-decimal percentage in the document is printed by
-one of those tables, the coverage CSV holds the protocol's whole grid, and the
+every table of the two documents is what ``ecs.structure_report`` renders from
+the result files, printed once, every one-decimal percentage in either document
+is printed by one of those tables, the coverage CSV holds the protocol's whole grid, and the
 A2 verdicts of ``structure.json`` follow from the CSV's rows.
 """
 
@@ -22,6 +22,7 @@ from ecs.structure import READINGS, a2_verdict
 from ecs.structure_report import load, tables
 
 DOC = REPO_ROOT / "STRUCTURE.md"
+SUPPLEMENT = REPO_ROOT / "STRUCTURE_SUPPLEMENT.md"
 CONTEXTS = ("inpatient", "emergency", "outpatient")
 COVARIATES = ("age_sex", "tabular", "embedding")
 PERCENT = re.compile(r"\d+\.\d%")
@@ -37,19 +38,17 @@ def rendered(results: tuple[dict[str, Any], pd.DataFrame, dict[str, Any]]) -> di
     return tables(*results)
 
 
-def test_each_table_of_the_document_is_rendered_from_the_results(
-    rendered: dict[str, str],
-) -> None:
+def test_each_table_is_rendered_once_from_the_results(rendered: dict[str, str]) -> None:
     """A table edited by hand, or left behind by a re-run, would print a figure no file holds."""
-    text = DOC.read_text()
-    missing = [name for name, table in rendered.items() if table not in text]
-    assert missing == []
+    text = DOC.read_text() + SUPPLEMENT.read_text()
+    printed = {name: text.count(table) for name, table in rendered.items()}
+    assert printed == dict.fromkeys(rendered, 1)
 
 
 def test_every_percentage_of_the_prose_is_in_a_table(rendered: dict[str, str]) -> None:
     """A figure quoted in a sentence must be one the tables print, read from the results."""
     printed = set(PERCENT.findall("\n".join(rendered.values())))
-    quoted = set(PERCENT.findall(DOC.read_text()))
+    quoted = set(PERCENT.findall(DOC.read_text() + SUPPLEMENT.read_text()))
     assert len(quoted) > 10
     assert sorted(quoted - printed) == []
 
@@ -144,7 +143,7 @@ def test_the_power_file_follows_from_structure_json(
 
 
 def test_every_probability_of_the_prose_is_in_the_power_table(rendered: dict[str, str]) -> None:
-    """« with probability 0.40 »: a power figure is read from Table 5, never typed."""
+    """« with probability 0.40 »: a power figure is read from Table 2, never typed."""
     quoted = set(re.findall(r"probability (?:above )?(?:is |of )?(0\.\d\d)", DOC.read_text()))
     assert quoted, "the text quotes no probability"
     missing = [p for p in quoted if f"| {p} |" not in rendered["power"]]
