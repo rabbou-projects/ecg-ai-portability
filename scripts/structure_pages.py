@@ -156,10 +156,14 @@ def figure_sensitivity(
 def main() -> None:
     summary, coverage, calibration = load()
     write_pages(tables(summary, coverage, calibration))
-    FIGURES.mkdir(parents=True, exist_ok=True)
+    out = FIGURES
+    out.mkdir(parents=True, exist_ok=True)
     for lang in LANGUAGES:
-        out = FIGURES / f"structure_sensitivity{SUFFIX[lang]}.png"
-        print(figure_sensitivity(summary, coverage, out, lang).relative_to(REPO_ROOT))
+        suffix = SUFFIX[lang]
+        path = figure_sensitivity(
+            summary, coverage, out / f"structure_sensitivity{suffix}.png", lang
+        )
+        print(path.relative_to(REPO_ROOT))
 
 
 if __name__ == "__main__":
