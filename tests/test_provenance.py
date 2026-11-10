@@ -46,6 +46,7 @@ REGENERABLE = (
     "ppv_gap.json",
     "ppv_intervals.json",
     "shift.json",
+    "structure_power.json",
     "subgroups.json",
 )
 
@@ -60,6 +61,7 @@ DIGEST_CHECKED = (
     "ppv_repairs_controls.json",
     "ppv_repairs_reserve.json",
     "ppv_repairs_reserve_code_zzu.json",
+    "structure.json",
 )
 
 # Not regenerable in a session, and why. The reason is the point: it is what a
@@ -172,6 +174,12 @@ NOT_REGENERABLE = {
         "zipped HDF5, the CODE test set and ZZU pECG's attribute table"
     ),
     "code_zzu_rotation.csv": "every row code_zzu_rotation.json summarises, written by the same run",
+    "structure.json": (
+        "needs EchoNext, the seven arms' per-record scores and the frozen ECGFounder "
+        "embeddings, none of which may be committed"
+    ),
+    "structure_coverage.csv": "every row structure.json judges, written by the same run",
+    "structure_calibration.json": "the calibration cells of structure.json's run",
     **{
         f"rotation_seven/{source}/{name}": reason
         for source in ("chapman_ningbo", "code15", "cpsc", "georgia", "mimic", "ptbxl", "sph")
