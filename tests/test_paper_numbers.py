@@ -90,6 +90,7 @@ LITERATURE = {
 # Constants of the design, not results.
 CONSTANTS = {
     "90%": "the sensitivity each threshold is set for, and the level of the refit",
+    "1.25": "the ratio of recomputed to observed PPV, either way, counted as off",
     "90": "90 of 100 ill patients, the same target counted in patients; the 90th percentile",
     "1": "the +1 of the rank correction",
     "2": "Part 2 of the supplement",
