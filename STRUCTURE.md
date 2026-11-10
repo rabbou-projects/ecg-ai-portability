@@ -163,7 +163,7 @@ The result comes from one hospital system, and its magnitude in a second system 
 
 ### 4.4 Implications for practice and research
 
-A site holding unlabelled ECGs can move a delivered threshold towards its target sensitivity by weighting on a foundation-model embedding, but the weighted threshold flags more patients, and the resulting number of echocardiograms per case detected has to be weighed against the cases missed at the delivered threshold. In this cohort, label-free recalibration did not replace a labelled sample of 100 to 200 outpatients. A confirmatory study would pre-specify the effective size and a bound on specificity, and would require several hundred target cases for the interval criterion to have adequate power.
+A site holding unlabelled ECGs can move a delivered threshold towards its target sensitivity by weighting on a foundation-model embedding, but the weighted threshold flags more patients, and the resulting number of echocardiograms per case detected has to be weighed against the cases missed at the delivered threshold. A confirmatory study would pre-specify the effective size and a bound on specificity, and would require several hundred target cases for the interval criterion to have adequate power.
 
 This is a retrospective study on public, de-identified data. Nothing here is intended to guide the care of any patient.
 

@@ -157,7 +157,7 @@ Le résultat vient d'un seul système hospitalier, et son ampleur dans un second
 
 ### 4.4 Implications pour la pratique et la recherche
 
-Un site disposant d'ECG non étiquetés peut rapprocher un seuil livré de sa sensibilité cible en pondérant sur la représentation d'un modèle de fondation, mais le seuil pondéré signale plus de patients, et le nombre d'échocardiographies par cas détecté qui en résulte doit être mis en regard des cas manqués au seuil livré. Dans cette cohorte, la recalibration sans étiquettes ne remplaçait pas un échantillon étiqueté de 100 à 200 patients ambulatoires. Une étude de confirmation préspécifierait la taille effective et une borne de spécificité, et exigerait plusieurs centaines de cas cibles pour que le critère d'intervalle ait une puissance suffisante.
+Un site disposant d'ECG non étiquetés peut rapprocher un seuil livré de sa sensibilité cible en pondérant sur la représentation d'un modèle de fondation, mais le seuil pondéré signale plus de patients, et le nombre d'échocardiographies par cas détecté qui en résulte doit être mis en regard des cas manqués au seuil livré. Une étude de confirmation préspécifierait la taille effective et une borne de spécificité, et exigerait plusieurs centaines de cas cibles pour que le critère d'intervalle ait une puissance suffisante.
 
 Il s'agit d'une étude rétrospective sur des données publiques et désidentifiées. Rien ici n'est destiné à guider la prise en charge d'un patient.
 
