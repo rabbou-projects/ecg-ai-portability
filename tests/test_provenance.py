@@ -54,6 +54,7 @@ REGENERABLE = (
 # tests/test_echonext_data.py rebuilds the numbers where the data are present.
 DIGEST_CHECKED = (
     "code_zzu_label_map.json",
+    "echonext_calibration.json",
     "echonext_clinical.json",
     "ppv_repairs.json",
     "ppv_repairs_controls.json",
@@ -157,6 +158,10 @@ NOT_REGENERABLE = {
     "echonext_clinical.json": (
         "needs EchoNext's metadata and the four arms' stored per-record scores, neither of "
         "which may be committed; tests/test_echonext_data.py rebuilds it where they are"
+    ),
+    "echonext_calibration.json": (
+        "needs EchoNext's metadata and the three models' stored per-record scores, neither of "
+        "which may be committed"
     ),
     "echonext_severity.json": (
         "needs EchoNext's metadata and the stored per-record scores, neither of which may be "

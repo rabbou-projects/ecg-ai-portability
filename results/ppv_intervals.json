@@ -119,6 +119,35 @@
         "high": 1.0
       }
     },
+    "columbia_inpatient_control": {
+      "cells": 48,
+      "clusters": 4,
+      "median_abs_gap_points": {
+        "estimate": 0.002241445,
+        "low": 0.00182233,
+        "high": 0.002815515
+      },
+      "share_outside_observed_interval": {
+        "estimate": 0.0,
+        "low": 0.0,
+        "high": 0.0
+      },
+      "share_within_two_points": {
+        "estimate": 1.0,
+        "low": 1.0,
+        "high": 1.0
+      },
+      "share_recipe_too_high": {
+        "estimate": 0.3333333333333333,
+        "low": 0.25,
+        "high": 0.4166666666666667
+      },
+      "share_ratio_off_by_a_quarter_or_more": {
+        "estimate": 0.020833333333333332,
+        "low": 0.0,
+        "high": 0.0625
+      }
+    },
     "rotation": {
       "cells": 92,
       "clusters": 20,
@@ -178,6 +207,89 @@
       }
     }
   },
+  "across_transfers_by_pair": {
+    "transfer": {
+      "cells": 174,
+      "clusters": 24,
+      "median_abs_gap_points": {
+        "estimate": 0.053485950000000004,
+        "low": 0.04241175375,
+        "high": 0.1252225
+      },
+      "share_outside_observed_interval": {
+        "estimate": 0.7471264367816092,
+        "low": 0.6850828729281768,
+        "high": 0.8252465711203575
+      },
+      "share_within_two_points": {
+        "estimate": 0.25287356321839083,
+        "low": 0.17857142857142858,
+        "high": 0.3157985169108337
+      },
+      "share_recipe_too_high": {
+        "estimate": 0.3563218390804598,
+        "low": 0.19432997485117626,
+        "high": 0.6729064495234569
+      },
+      "share_ratio_off_by_a_quarter_or_more": {
+        "estimate": 0.5747126436781609,
+        "low": 0.4488569987255735,
+        "high": 0.712501871257485
+      }
+    },
+    "control": {
+      "cells": 72,
+      "clusters": 6,
+      "median_abs_gap_points": {
+        "estimate": 0.00326704,
+        "low": 0.0023353,
+        "high": 0.0216793
+      },
+      "share_outside_observed_interval": {
+        "estimate": 0.013888888888888888,
+        "low": 0.0,
+        "high": 0.1
+      },
+      "share_within_two_points": {
+        "estimate": 0.8611111111111112,
+        "low": 0.4482758620689655,
+        "high": 0.9685970483840834
+      },
+      "share_recipe_too_high": {
+        "estimate": 0.4027777777777778,
+        "low": 0.3415228153250108,
+        "high": 0.6333333333333333
+      },
+      "share_ratio_off_by_a_quarter_or_more": {
+        "estimate": 0.013888888888888888,
+        "low": 0.0,
+        "high": 0.0189873417721519
+      }
+    }
+  },
+  "likelihood_ratio_healthy_columbia": {
+    "inpatient": {
+      "estimate": 0.9883725,
+      "low": 0.9743854999999999,
+      "high": 1.01225,
+      "cells": 48,
+      "clusters": 4
+    },
+    "emergency": {
+      "estimate": 0.7491995,
+      "low": 0.703387,
+      "high": 0.8506425,
+      "cells": 44,
+      "clusters": 4
+    },
+    "outpatient": {
+      "estimate": 0.49363,
+      "low": 0.39809,
+      "high": 0.662941,
+      "cells": 36,
+      "clusters": 4
+    }
+  },
   "columbia": {
     "inpatient": {
       "prevalence": {
@@ -227,14 +339,14 @@
     }
   },
   "provenance": {
-    "commit": "f4ad5a877c8d4197cd0696763acc3c434ed42e5e",
+    "commit": "3d9144a331bd0dff07e92b9e0802407b6c25bcd5",
     "producers": {
       "results/echonext_clinical.json": "791088551738f273a7228d5514aea572e8e34ef4b0431eb88b4f93dd8b245889",
       "results/echonext_ppv_gap.json": "ce8ea612cc09fdc701c70219bf2c9ef5e950eece038959fd34d8931fed315ca4",
       "results/ppv_gap.json": "533766b2321a35fb8c2a9e4fd26f6ea7f90277755ba3fcc95bb9a6cb35540be8",
-      "scripts/ppv_intervals.py": "7107bb4621dcf50e07be574459666ee39804cfaa8fb7aca6057f8662998d1b08",
+      "scripts/ppv_intervals.py": "2d578618b8a4baa2948d53c35c5c6e49c0783fba1a088afb139470a289c57f22",
       "src/ecs/metrics.py": "e04509abce93b400ac90cbd102a63a747f0559de4d2c9d20cdc2ee4ce1cf90e6"
     }
   },
-  "seconds": 0.4
+  "seconds": 7.6
 }
