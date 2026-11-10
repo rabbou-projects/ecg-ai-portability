@@ -585,6 +585,13 @@ def ppv() -> dict[str, str]:
         lr = read("ppv_intervals.json")["likelihood_ratio_healthy_columbia"][target]
         assert abs(lr["estimate"] - ratio) < 1e-5, target
         out[f"lr_healthy_{c}_ci"] = f"{lr['low']:.2f} to {lr['high']:.2f}"
+    cal = read("echonext_calibration.json")["arms"]
+    for arm, short in (("resnet", "resnet"), ("echonext_mini", "mini"), ("ecgfounder", "ecgf")):
+        for context, c in (("inpatient", "in"), ("outpatient", "out")):
+            oe = cal[arm][context]["observed_expected"]
+            out[f"oe_{short}_{c}"] = f"{oe['estimate']:.2f}"
+            out[f"oe_{short}_{c}_ci"] = f"{oe['low']:.2f} to {oe['high']:.2f}"
+    out["cal_pred_resnet_out"] = pct(cal["resnet"]["outpatient"]["mean_predicted"])
     by_pair = read("ppv_intervals.json")["across_transfers_by_pair"]["transfer"]
     out["ppv_pair_clusters"] = f"{by_pair['clusters']}"
     out["ppv_gap_median_pair_ci"] = points_ci(by_pair["median_abs_gap_points"])
