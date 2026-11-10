@@ -582,6 +582,13 @@ def ppv() -> dict[str, str]:
     for target, c in (("inpatient", "in"), ("emergency", "em"), ("outpatient", "out")):
         ratio = echo[target]["median_likelihood_ratio_healthy_target"]
         out[f"lr_healthy_{c}"] = f"{ratio:.2f}"
+        lr = read("ppv_intervals.json")["likelihood_ratio_healthy_columbia"][target]
+        assert abs(lr["estimate"] - ratio) < 1e-5, target
+        out[f"lr_healthy_{c}_ci"] = f"{lr['low']:.2f} to {lr['high']:.2f}"
+    by_pair = read("ppv_intervals.json")["across_transfers_by_pair"]["transfer"]
+    out["ppv_pair_clusters"] = f"{by_pair['clusters']}"
+    out["ppv_gap_median_pair_ci"] = points_ci(by_pair["median_abs_gap_points"])
+    out["ppv_outside_pair"] = share_ci(by_pair["share_outside_observed_interval"])
 
     shd = ppv_row(family="echonext", model="resnet", target="outpatient", label=COMPOSITE)
     lvef = ppv_row(family="echonext", model="resnet", target="outpatient", label="lvef_lte_45_flag")
