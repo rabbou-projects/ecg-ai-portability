@@ -51,7 +51,7 @@
     }
   },
   "provenance": {
-    "commit": "ac4e89cdbbd5152ceae3f56085d88be5f5950701",
+    "commit": "b3c6938ad2019ca630be772089f58176ea04daa4",
     "producers": {
       "scripts/structure_power.py": "b61c6cae54f1cb8d0ac8729d7a97c81189dfe45e91365ea03cca72fd4629fa0c",
       "src/ecs/metrics.py": "e04509abce93b400ac90cbd102a63a747f0559de4d2c9d20cdc2ee4ce1cf90e6",
