@@ -6,9 +6,12 @@ authors:
   - family-names: Abbou
     given-names: Ruben
 repository-code: https://github.com/rabbou/ecg-ai-portability
-# v1.0.0 and v1.1.0 are tags of earlier articles; this one is cited as 2.0.0, and
-# date-released is written when that tag is made at the merge.
-version: 2.0.0
+# v1.0.0 and v1.1.0 are tags of earlier articles; v2.0.0 was the article's first release.
+# v2.1.0 adds the seven-source rotation, the PPV repairs and the label-free recalibration
+# study, and corrects and completes the report's reporting; date-released is the day the
+# release PR is made, and the tag follows its merge.
+version: 2.1.0
+date-released: 2026-11-12
 license: MIT
 abstract: >-
   Across {{ppv_gap_cells}} transfers of a threshold between hospitals, care
