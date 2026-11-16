@@ -1,0 +1,10 @@
+{
+ "home_path": {},
+ "contact": {},
+ "name": {
+  "CITATION.cff": 4,
+  "LICENSE": 2,
+  "docs/templates/CITATION.cff": 4,
+  "tests/test_paper_numbers.py": 3
+ }
+}

@@ -96,7 +96,7 @@ def demo_check(
 ) -> dict[str, Any]:
     """The open estimate against the real year groups of the open demo patients."""
     if not MIMIC_PATIENTS_CSV.exists():
-        return {"available": False, "path": str(MIMIC_PATIENTS_CSV)}
+        return {"available": False, "path": MIMIC_PATIENTS_CSV.name}
     patients = pd.read_csv(MIMIC_PATIENTS_CSV)
     table = patients.set_index(patients["subject_id"])
     seen = measures[measures["subject_id"].isin(table.index)]
@@ -114,7 +114,7 @@ def demo_check(
     rho = pd.Series(placed[inside]).corr(pd.Series(middle[inside]), method="spearman")
     return {
         "available": True,
-        "path": str(MIMIC_PATIENTS_CSV),
+        "path": MIMIC_PATIENTS_CSV.name,
         "n_patients": int(seen["subject_id"].nunique()),
         "n_tracings": int(inside.sum()),
         "n_tracings_clock_outside_2008_2019": int((~inside).sum()),
