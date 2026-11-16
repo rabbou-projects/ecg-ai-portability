@@ -28,6 +28,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 import subprocess
 import sys
@@ -94,9 +95,14 @@ def count_text(
     return +out
 
 
+def git_env() -> dict[str, str]:
+    """The environment without the GIT_* variables a git hook exports, which aim git at the hooked repo."""
+    return {k: v for k, v in os.environ.items() if not k.startswith("GIT_")}
+
+
 def tracked_files(root: Path) -> list[str]:
     res = subprocess.run(
-        ["git", "-C", str(root), "ls-files", "-z"], capture_output=True, check=True
+        ["git", "-C", str(root), "ls-files", "-z"], capture_output=True, check=True, env=git_env()
     )
     return [p for p in res.stdout.decode().split("\0") if p]
 

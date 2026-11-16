@@ -76,12 +76,17 @@ def test_compare_refuses_a_rise_a_new_file_and_a_stale_baseline() -> None:
     assert [e.split()[0] for e in rise + new + fall] == ["RISE", "RISE", "FALL"]
 
 
+def _git(*args: str) -> None:
+    """Run git as a test fixture; a hook's GIT_DIR must not aim it at the real repo (``git init`` would reinitialise it)."""
+    subprocess.run(["git", *args], check=True, env=hr.git_env())
+
+
 def test_lower_refuses_to_write_a_rise(tmp_path: Path) -> None:
     """--lower writes a fall and refuses a rise, so the baseline cannot be raised by the tool."""
-    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    _git("init", "-q", str(tmp_path))
     f = tmp_path / "a.py"
     f.write_text('p = "/Users/someone/a"\n')
-    subprocess.run(["git", "-C", str(tmp_path), "add", "a.py"], check=True)
+    _git("-C", str(tmp_path), "add", "a.py")
     assert hr.main(["--root", str(tmp_path), "--lower"]) == 0
     assert json.loads((tmp_path / hr.BASELINE_NAME).read_text())["home_path"] == {"a.py": 1}
     f.write_text('p = "/Users/someone/a"\nq = "/home/bob/b"\n')
@@ -95,10 +100,10 @@ def test_lower_refuses_to_write_a_rise(tmp_path: Path) -> None:
 
 def test_prose_is_left_out(tmp_path: Path) -> None:
     """Markdown is prose and is not counted; the same line in a code file is."""
-    subprocess.run(["git", "init", "-q", str(tmp_path)], check=True)
+    _git("init", "-q", str(tmp_path))
     (tmp_path / "README.md").write_text("/Users/someone/a\n")
     (tmp_path / "run.sh").write_text("/Users/someone/a\n")
-    subprocess.run(["git", "-C", str(tmp_path), "add", "."], check=True)
+    _git("-C", str(tmp_path), "add", ".")
     assert hr.scan(tmp_path)["home_path"] == {"run.sh": 1}
 
 
