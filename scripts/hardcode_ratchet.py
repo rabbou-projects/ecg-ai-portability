@@ -14,6 +14,12 @@ kinds over every tracked text file that is not prose (Markdown is prose):
 ``name``
     The owner's first name or surname as a word, matched by hash.
 
+A name that is attribution, not a literal (a LICENSE copyright line, a
+CITATION.cff or ``pyproject.toml`` author, a LaTeX ``\\author`` line, a paper's
+author list), is listed by path with its reason in ``hardcode-allow.json``; only
+the ``name`` kind can be allowed, and an entry whose file holds no name any more
+fails the check, so the list cannot outlive its reason.
+
 The count per kind and per file lives in ``hardcode-baseline.json`` next to the
 repo root. ``--check`` fails when a file holds more than its baseline, when a
 file not in the baseline holds any, or when a file holds fewer (the baseline is
@@ -36,6 +42,8 @@ from collections import Counter
 from pathlib import Path
 
 BASELINE_NAME = "hardcode-baseline.json"
+ALLOW_NAME = "hardcode-allow.json"
+ALLOWABLE_KINDS = frozenset({"name"})
 KINDS = ("home_path", "contact", "name")
 
 # sha256 prefixes (16 hex) of the normalised literal, so no literal is written here.
@@ -45,7 +53,9 @@ DATE_HASHES = frozenset({"5c9a7f8609fb3cda"})  # ISO date
 NAME_HASHES = frozenset({"b04e95d0b09d1c38", "711ea5f3db989de2"})  # lowercase word
 
 HOME_PATH = re.compile(r"(?<![\w.~$-])/(?:Users|home)/(?!runner\b)[A-Za-z][\w.-]*")
-TAILNET = re.compile(r"(?<![\d.])100\.(?:6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.\d{1,3}\.\d{1,3}(?![\d.])")
+TAILNET = re.compile(
+    r"(?<![\d.])100\.(?:6[4-9]|[7-9]\d|1[01]\d|12[0-7])\.\d{1,3}\.\d{1,3}(?![\d.])"
+)
 EMAIL = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
 PHONE = re.compile(r"(?<![\d])(?:\+33[\s.-]?|0)[1-9](?:[\s.-]?\d{2}){4}(?![\d])")
 ISO_DATE = re.compile(r"(?<!\d)(\d{4})-(\d{2})-(\d{2})(?!\d)")
@@ -54,7 +64,7 @@ IBAN = re.compile(r"\b[A-Z]{2}\d{2}(?:[ ]?[A-Z0-9]{4}){3,7}(?:[ ]?[A-Z0-9]{1,3})
 WORD = re.compile(r"(?<![\w])[A-Za-zÀ-ÿ]{5}(?![\w])")
 
 PROSE_SUFFIXES = (".md", ".mdx", ".markdown", ".rst")
-SELF_FILES = frozenset({"scripts/hardcode_ratchet.py", BASELINE_NAME})
+SELF_FILES = frozenset({"scripts/hardcode_ratchet.py", BASELINE_NAME, ALLOW_NAME})
 MAX_BYTES = 2_000_000
 
 
@@ -102,7 +112,10 @@ def git_env() -> dict[str, str]:
 
 def tracked_files(root: Path) -> list[str]:
     res = subprocess.run(
-        ["git", "-C", str(root), "ls-files", "-z"], capture_output=True, check=True, env=git_env()
+        ["git", "-C", str(root), "ls-files", "-z"],
+        capture_output=True,
+        check=True,
+        env=git_env(),
     )
     return [p for p in res.stdout.decode().split("\0") if p]
 
@@ -126,7 +139,41 @@ def scan(root: Path, *, include_prose: bool = False) -> dict[str, dict[str, int]
     return {k: dict(sorted(v.items())) for k, v in out.items()}
 
 
-def compare(current: dict[str, dict[str, int]], baseline: dict[str, dict[str, int]]) -> list[str]:
+def load_allow(root: Path) -> dict[str, dict[str, str]]:
+    """The allow-list, ``{kind: {path: reason}}``; refuses a kind other than ``name`` or an empty reason."""
+    path = root / ALLOW_NAME
+    if not path.exists():
+        return {}
+    allow = json.loads(path.read_text())
+    for kind, entries in allow.items():
+        if kind not in ALLOWABLE_KINDS:
+            raise ValueError(
+                f"{ALLOW_NAME}: kind {kind!r} cannot be allowed; only {sorted(ALLOWABLE_KINDS)}"
+            )
+        for rel, reason in entries.items():
+            if not str(reason).strip():
+                raise ValueError(f"{ALLOW_NAME}: {rel} has no reason")
+    return allow
+
+
+def apply_allow(
+    counts: dict[str, dict[str, int]], allow: dict[str, dict[str, str]]
+) -> tuple[dict[str, dict[str, int]], list[str]]:
+    """The counts without the allowed (kind, file) pairs, and one error per entry that matches nothing."""
+    out = {k: dict(v) for k, v in counts.items()}
+    stale: list[str] = []
+    for kind, entries in allow.items():
+        for rel in entries:
+            if out.get(kind, {}).pop(rel, 0) == 0:
+                stale.append(
+                    f"STALE {kind} {rel}: allowed in {ALLOW_NAME} but holds none; delete the entry"
+                )
+    return out, stale
+
+
+def compare(
+    current: dict[str, dict[str, int]], baseline: dict[str, dict[str, int]]
+) -> list[str]:
     """Every (kind, file) whose count differs from the baseline, as a message."""
     errors: list[str] = []
     for kind in KINDS:
@@ -134,9 +181,13 @@ def compare(current: dict[str, dict[str, int]], baseline: dict[str, dict[str, in
         for rel in sorted(set(cur) | set(base)):
             c, b = cur.get(rel, 0), base.get(rel, 0)
             if c > b:
-                errors.append(f"RISE {kind} {rel}: {c} > baseline {b}; move the value to config, the store or the secret store")
+                errors.append(
+                    f"RISE {kind} {rel}: {c} > baseline {b}; move the value to config, the store or the secret store"
+                )
             elif c < b:
-                errors.append(f"FALL {kind} {rel}: {c} < baseline {b}; run --lower and commit {BASELINE_NAME}")
+                errors.append(
+                    f"FALL {kind} {rel}: {c} < baseline {b}; run --lower and commit {BASELINE_NAME}"
+                )
     return errors
 
 
@@ -148,19 +199,37 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     ap.add_argument("--root", type=Path, default=Path(__file__).resolve().parents[1])
     mode = ap.add_mutually_exclusive_group()
-    mode.add_argument("--check", action="store_true", help="fail on any difference from the baseline")
-    mode.add_argument("--lower", action="store_true", help="write the current counts; refuse a rise")
-    mode.add_argument("--report", action="store_true", help="print totals, prose included, as JSON")
+    mode.add_argument(
+        "--check", action="store_true", help="fail on any difference from the baseline"
+    )
+    mode.add_argument(
+        "--lower", action="store_true", help="write the current counts; refuse a rise"
+    )
+    mode.add_argument(
+        "--report", action="store_true", help="print totals, prose included, as JSON"
+    )
     args = ap.parse_args(argv)
     root = args.root.resolve()
     if args.report:
-        print(json.dumps({"code": totals(scan(root)), "prose": totals(scan(root, include_prose=True))}))
+        print(
+            json.dumps(
+                {
+                    "code": totals(scan(root)),
+                    "prose": totals(scan(root, include_prose=True)),
+                }
+            )
+        )
         return 0
-    current = scan(root)
+    current, stale = apply_allow(scan(root), load_allow(root))
     bpath = root / BASELINE_NAME
     baseline = json.loads(bpath.read_text()) if bpath.exists() else {}
     if args.lower:
-        rises = [e for e in compare(current, baseline) if e.startswith("RISE")] if baseline else []
+        rises = (
+            [e for e in compare(current, baseline) if e.startswith("RISE")]
+            if baseline
+            else []
+        )
+        rises = stale + rises
         if rises:
             print("\n".join(rises), file=sys.stderr)
             return 1
@@ -170,7 +239,7 @@ def main(argv: list[str] | None = None) -> int:
     if not bpath.exists():
         print(f"no {BASELINE_NAME}; run --lower once to create it", file=sys.stderr)
         return 2
-    errors = compare(current, baseline)
+    errors = stale + compare(current, baseline)
     print(json.dumps({"baseline": totals(baseline), "current": totals(current)}))
     if errors:
         print("\n".join(errors), file=sys.stderr)

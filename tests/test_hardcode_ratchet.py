@@ -15,10 +15,14 @@ import subprocess
 import sys
 from pathlib import Path
 
+import pytest
+
 _REPO = Path(__file__).resolve().parents[1]
 while not (_REPO / "scripts" / "hardcode_ratchet.py").exists():
     _REPO = _REPO.parent
-_spec = importlib.util.spec_from_file_location("hardcode_ratchet", _REPO / "scripts" / "hardcode_ratchet.py")
+_spec = importlib.util.spec_from_file_location(
+    "hardcode_ratchet", _REPO / "scripts" / "hardcode_ratchet.py"
+)
 assert _spec and _spec.loader
 hr = importlib.util.module_from_spec(_spec)
 sys.modules["hardcode_ratchet"] = hr
@@ -32,7 +36,8 @@ def _h(s: str) -> frozenset[str]:
 def test_repo_counts_equal_the_baseline() -> None:
     """A new home path or personal literal in a tracked file reddens CI; a removed one must lower the baseline."""
     baseline = json.loads((_REPO / hr.BASELINE_NAME).read_text())
-    assert hr.compare(hr.scan(_REPO), baseline) == []
+    current, stale = hr.apply_allow(hr.scan(_REPO), hr.load_allow(_REPO))
+    assert stale + hr.compare(current, baseline) == []
 
 
 def test_home_paths_and_tailnet_addresses_count() -> None:
@@ -63,7 +68,9 @@ def test_only_a_checksum_valid_iban_counts() -> None:
 def test_name_matches_a_whole_word_only() -> None:
     """The owner's name as a word counts; the same letters inside a longer word do not."""
     names = _h("alice")
-    assert hr.count_text("Alice wrote; alice's; malice; alicex", names=names)["name"] == 2
+    assert (
+        hr.count_text("Alice wrote; alice's; malice; alicex", names=names)["name"] == 2
+    )
 
 
 def test_compare_refuses_a_rise_a_new_file_and_a_stale_baseline() -> None:
@@ -88,7 +95,9 @@ def test_lower_refuses_to_write_a_rise(tmp_path: Path) -> None:
     f.write_text('p = "/Users/someone/a"\n')
     _git("-C", str(tmp_path), "add", "a.py")
     assert hr.main(["--root", str(tmp_path), "--lower"]) == 0
-    assert json.loads((tmp_path / hr.BASELINE_NAME).read_text())["home_path"] == {"a.py": 1}
+    assert json.loads((tmp_path / hr.BASELINE_NAME).read_text())["home_path"] == {
+        "a.py": 1
+    }
     f.write_text('p = "/Users/someone/a"\nq = "/home/bob/b"\n')
     assert hr.main(["--root", str(tmp_path), "--lower"]) == 1
     assert hr.main(["--root", str(tmp_path), "--check"]) == 1
@@ -107,14 +116,69 @@ def test_prose_is_left_out(tmp_path: Path) -> None:
     assert hr.scan(tmp_path)["home_path"] == {"run.sh": 1}
 
 
-if __name__ == "__main__":
-    import tempfile
+def _allow_repo(tmp_path: Path, monkeypatch: pytest.MonkeyPatch, allow: object) -> None:
+    """A repo whose LICENSE names an invented owner, with that name hashed in as the owner's."""
+    kw = dict(hr.count_text.__kwdefaults__ or {})
+    kw["names"] = _h("zorro")
+    monkeypatch.setattr(hr.count_text, "__kwdefaults__", kw)
+    _git("init", "-q", str(tmp_path))
+    (tmp_path / "LICENSE").write_text("Copyright 2026 Zorro\n")
+    (tmp_path / "a.py").write_text("x = 1\n")
+    (tmp_path / hr.ALLOW_NAME).write_text(json.dumps(allow))
+    _git("-C", str(tmp_path), "add", ".")
 
-    for name, fn in list(globals().items()):
-        if name.startswith("test_") and callable(fn):
-            if "tmp_path" in fn.__code__.co_varnames[: fn.__code__.co_argcount]:
-                with tempfile.TemporaryDirectory() as d:
-                    fn(Path(d))
-            else:
-                fn()
-            print("ok", name)
+
+def test_an_allowed_attribution_is_not_counted(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """A copyright holder in LICENSE is attribution: allowed by path and reason, it leaves the baseline at zero."""
+    _allow_repo(tmp_path, monkeypatch, {"name": {"LICENSE": "copyright holder"}})
+    assert hr.main(["--root", str(tmp_path), "--lower"]) == 0
+    assert hr.totals(json.loads((tmp_path / hr.BASELINE_NAME).read_text())) == {
+        "home_path": 0,
+        "contact": 0,
+        "name": 0,
+    }
+    assert hr.main(["--root", str(tmp_path), "--check"]) == 0
+    (tmp_path / "a.py").write_text('who = "Zorro"\n')
+    assert hr.main(["--root", str(tmp_path), "--check"]) == 1
+
+
+def test_without_the_entry_the_attribution_counts(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """The twin: with an empty allow-list the same LICENSE line is one name in the baseline."""
+    _allow_repo(tmp_path, monkeypatch, {})
+    assert hr.main(["--root", str(tmp_path), "--lower"]) == 0
+    assert json.loads((tmp_path / hr.BASELINE_NAME).read_text())["name"] == {
+        "LICENSE": 1
+    }
+
+
+def test_a_stale_allow_entry_fails(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    """An entry whose file no longer names the owner would let a later name in unseen, so it fails --check and --lower."""
+    _allow_repo(tmp_path, monkeypatch, {"name": {"LICENSE": "copyright holder"}})
+    assert hr.main(["--root", str(tmp_path), "--lower"]) == 0
+    stale = {"name": {"LICENSE": "copyright holder", "a.py": "no name here"}}
+    (tmp_path / hr.ALLOW_NAME).write_text(json.dumps(stale))
+    assert hr.main(["--root", str(tmp_path), "--lower"]) == 1
+    assert hr.main(["--root", str(tmp_path), "--check"]) == 1
+
+
+@pytest.mark.parametrize(
+    "allow",
+    [
+        {"home_path": {"LICENSE": "x"}},
+        {"contact": {"LICENSE": "x"}},
+        {"name": {"LICENSE": " "}},
+    ],
+)
+def test_only_a_name_with_a_reason_can_be_allowed(
+    tmp_path: Path, monkeypatch: pytest.MonkeyPatch, allow: object
+) -> None:
+    """A home path or a contact is never attribution, and an entry without a reason is refused."""
+    _allow_repo(tmp_path, monkeypatch, allow)
+    with pytest.raises(ValueError):
+        hr.load_allow(tmp_path)
