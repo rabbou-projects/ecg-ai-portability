@@ -6,8 +6,8 @@ record whose bytes change gets a new one instead of a stale hit.  The encoder
 version is part of the directory, so a changed preprocessing or checkpoint
 writes beside the old vectors rather than over them.
 
-The store holds derived data of whatever corpus it embeds, so it lives outside
-the repository (``ECS_EMBEDDING_STORE``, default ``~/data/ecg-embeddings``).
+The store holds derived data of whatever corpus it embeds, so it is untracked:
+``ECS_EMBEDDING_STORE``, default ``data/ecg-embeddings``.
 """
 
 from __future__ import annotations
@@ -20,9 +20,11 @@ from pathlib import Path
 import numpy as np
 from numpy.typing import NDArray
 
+from .config import DATA
+
 __all__ = ["STORE_DIR", "EmbeddingStore"]
 
-STORE_DIR = Path(os.environ.get("ECS_EMBEDDING_STORE", Path.home() / "data/ecg-embeddings"))
+STORE_DIR = Path(os.environ.get("ECS_EMBEDDING_STORE", DATA / "ecg-embeddings"))
 
 Vectors = NDArray[np.float32]
 

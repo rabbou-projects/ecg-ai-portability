@@ -54,7 +54,7 @@ def plan(tmp_path: Path) -> Plan:
 
 def test_a_run_cut_short_resumes_onto_the_same_weights(tmp_path: Path) -> None:
     """A crash after epoch 1 then a restart must file the weights an uninterrupted run
-    files, or the seed's model in ~/data/echonext-derived/models is not that seed's."""
+    files, or the seed's model in data/echonext-derived/models is not that seed's."""
     whole_dir, cut_dir = tmp_path / "whole", tmp_path / "cut"
     whole_state, whole_history = train(Toy(), read, plan(whole_dir), torch.device("cpu"), print)
 

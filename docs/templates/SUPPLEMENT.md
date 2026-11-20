@@ -251,8 +251,9 @@ electrocardiographs.
 
 EchoNext's tracings stay outside the repository. Point `ECS_ECHONEXT_DIR` at
 the distribution (default `~/data/echonext`); `ECS_ECHONEXT_DERIVED` (default
-`~/data/echonext-derived`) and `ECS_EMBEDDING_STORE` (default
-`~/data/ecg-embeddings`) receive what the scripts derive from it.
+`data/echonext-derived`) and `ECS_EMBEDDING_STORE` (default
+`data/ecg-embeddings`) receive what the scripts derive from it. Both sit in the
+untracked `data/` folder of the main checkout, which `ECS_DATA` moves.
 
 ```bash
 uv run python scripts/echonext_provenance.py   # results/echonext_provenance.json
