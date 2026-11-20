@@ -7,11 +7,36 @@ from pathlib import Path
 
 REPO_ROOT = Path(__file__).resolve().parents[2]
 
+
+def repo_root(here: Path = REPO_ROOT) -> Path:
+    """The main checkout, also when ``here`` is a linked worktree of it.
+
+    Untracked data sits in the main checkout only.  A linked worktree's ``.git`` file
+    names the main checkout's git directory, as an absolute path or, under
+    ``worktree.useRelativePaths``, relative to the worktree.
+    """
+    marker = here / ".git"
+    if not marker.is_file():
+        return here
+    gitdir = Path(os.path.normpath(here / marker.read_text().split("gitdir:", 1)[1].strip()))
+    if gitdir.parent.name != "worktrees":
+        return here
+    return gitdir.parent.parent.parent
+
+
+def data_root() -> Path:
+    """``ECS_DATA`` when set, else ``data/`` of the main checkout."""
+    return Path(os.environ.get("ECS_DATA", repo_root() / "data")).expanduser()
+
+
+# Every corpus and derived file this repository keeps outside git sits under here.
+DATA = data_root()
+
 # PTB-XL is not copied: the 4.5 GB already on disk from an earlier project is
 # read in place.  Override with ECS_PTBXL_DIR when it moves.
 PTBXL_DIR = Path(os.environ.get("ECS_PTBXL_DIR", Path.home() / "Developer/ptbxl5d/data"))
-SPH_DIR = Path(os.environ.get("ECS_SPH_DIR", REPO_ROOT / "data/sph"))
-ACS_DIR = Path(os.environ.get("ECS_ACS_DIR", REPO_ROOT / "data/acs"))
+SPH_DIR = Path(os.environ.get("ECS_SPH_DIR", DATA / "sph"))
+ACS_DIR = Path(os.environ.get("ECS_ACS_DIR", DATA / "acs"))
 RESULTS_DIR = Path(os.environ.get("ECS_RESULTS_DIR", REPO_ROOT / "results"))
 
 # The PhysioNet/CinC Challenge-2021 bundle, read only to count how much
