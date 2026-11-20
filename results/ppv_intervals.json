@@ -339,14 +339,14 @@
     }
   },
   "provenance": {
-    "commit": "3d9144a331bd0dff07e92b9e0802407b6c25bcd5",
+    "commit": "683ac80aadaf062ebfc2d11c0c2eb003cbdf497b",
     "producers": {
-      "results/echonext_clinical.json": "791088551738f273a7228d5514aea572e8e34ef4b0431eb88b4f93dd8b245889",
+      "results/echonext_clinical.json": "58bb57ef25ddd65296798f66388f39139c29878a588b9b93b53c980eedab22a5",
       "results/echonext_ppv_gap.json": "ce8ea612cc09fdc701c70219bf2c9ef5e950eece038959fd34d8931fed315ca4",
       "results/ppv_gap.json": "533766b2321a35fb8c2a9e4fd26f6ea7f90277755ba3fcc95bb9a6cb35540be8",
       "scripts/ppv_intervals.py": "2d578618b8a4baa2948d53c35c5c6e49c0783fba1a088afb139470a289c57f22",
       "src/ecs/metrics.py": "e04509abce93b400ac90cbd102a63a747f0559de4d2c9d20cdc2ee4ce1cf90e6"
     }
   },
-  "seconds": 7.6
+  "seconds": 1.9
 }
