@@ -61,3 +61,21 @@ def test_the_corpora_kept_in_this_repository_default_under_the_data_folder(tmp_p
         [sys.executable, "-I", "-c", code], env=env, capture_output=True, text=True, check=True
     )
     assert out.stdout.split() == [str(tmp_path / "sph"), str(tmp_path / "acs")]
+
+
+def test_the_derived_data_defaults_under_the_data_folder(tmp_path: Path) -> None:
+    code = (
+        "from ecs.echonext import DERIVED_DIR; from ecs.embedding_store import STORE_DIR;"
+        "print(DERIVED_DIR, STORE_DIR, sep='\\n')"
+    )
+    out = subprocess.run(
+        [sys.executable, "-I", "-c", code],
+        env={"ECS_DATA": str(tmp_path)},
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    assert out.stdout.split() == [
+        str(tmp_path / "echonext-derived"),
+        str(tmp_path / "ecg-embeddings"),
+    ]

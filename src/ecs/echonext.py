@@ -12,8 +12,8 @@ difference in amplitude between this corpus and a millivolt corpus cannot be
 read off the files.
 
 The licence forbids sharing the data (clause 3).  Everything this module writes
-per record therefore goes under ``ECS_ECHONEXT_DERIVED`` outside the repository;
-only counts and aggregate figures reach ``results/``.
+per record therefore goes under ``ECS_ECHONEXT_DERIVED`` (default
+``data/echonext-derived``, untracked); only counts and aggregate figures reach ``results/``.
 
 Row order is the contract the distribution states: the rows of one split in the
 metadata file, in file order, are the rows of that split's arrays.
@@ -31,6 +31,8 @@ from typing import Any
 import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
+
+from .config import DATA
 
 __all__ = [
     "COMPOSITE",
@@ -56,7 +58,7 @@ __all__ = [
 ]
 
 ECHONEXT_DIR = Path(os.environ.get("ECS_ECHONEXT_DIR", Path.home() / "data/echonext"))
-DERIVED_DIR = Path(os.environ.get("ECS_ECHONEXT_DERIVED", Path.home() / "data/echonext-derived"))
+DERIVED_DIR = Path(os.environ.get("ECS_ECHONEXT_DERIVED", DATA / "echonext-derived"))
 
 DISTRIBUTION = "physionet.org/content/echonext/1.1.1"
 METADATA = "echonext_metadata_100k.csv"

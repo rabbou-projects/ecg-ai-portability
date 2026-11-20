@@ -1,7 +1,7 @@
 """The committed EchoNext figures against the corpus on disk.
 
 These need EchoNext (restricted licence, ``ECS_ECHONEXT_DIR``) and the derived
-files the scripts write outside the repository.  They are deselected by
+files the scripts write under ``data/``.  They are deselected by
 ``-m "not data"``, never skipped: run where the corpus is absent, they fail
 and say what is missing, so a green run cannot hide a missing corpus.
 """
