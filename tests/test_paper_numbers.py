@@ -291,7 +291,7 @@ def test_table_1_rows_add_up_to_the_totals_they_split() -> None:
 
 class TestTheReportsShape:
     def test_the_report_ends_at_its_references(self) -> None:
-        """Ruben, 5/10: no appendix; what only a statistician needs is in SUPPLEMENT.md."""
+        """Owner, 5/10: no appendix; what only a statistician needs is in SUPPLEMENT.md."""
         text = REPORT.read_text()
         headings = re.findall(r"^## (.+)$", text, flags=re.M)
         assert headings[-1] == "References"
@@ -317,7 +317,7 @@ class TestTheReportsShape:
         assert "date-released: 2026-09-30" not in CITATION.read_text()
 
     def test_the_seven_conditions_are_named_in_the_report(self) -> None:
-        """Ruben, 5/10: name all seven conditions."""
+        """Owner, 5/10: name all seven conditions."""
         text = REPORT.read_text().lower()
         for condition in (
             "structural heart disease",
@@ -331,7 +331,7 @@ class TestTheReportsShape:
             assert condition in text, condition
 
     def test_the_two_phrases_ruben_could_not_follow_are_gone(self) -> None:
-        """Ruben, 5/10: 'how well the model ranks' and 'three ways of deciding'."""
+        """Owner, 5/10: 'how well the model ranks' and 'three ways of deciding'."""
         for target in (REPORT, README, CITATION):
             text = target.read_text().lower()
             assert "how well the model ranks" not in text

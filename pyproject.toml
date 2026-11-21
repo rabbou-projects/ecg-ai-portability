@@ -44,7 +44,14 @@ target-version = "py311"
 # third_party is upstream code kept as published.  .claude is a local scratch
 # directory that may hold git worktrees of this repository, whose copies of
 # these same files would otherwise be linted and reformatted from here.
-extend-exclude = ["third_party", ".claude"]
+# The hardcode ratchet and its test are the same bytes in every repo of the
+# fleet, so they follow its line length, not this one.
+extend-exclude = [
+  "third_party",
+  ".claude",
+  "scripts/hardcode_ratchet.py",
+  "tests/test_hardcode_ratchet.py",
+]
 force-exclude = true  # also when a hook passes the path explicitly
 
 [tool.ruff.lint]

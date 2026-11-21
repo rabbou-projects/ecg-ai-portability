@@ -27,6 +27,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import subprocess
 import sys
 import time
@@ -36,6 +37,11 @@ from typing import Any
 from ecs.config import RESULTS_DIR
 from ecs.duplicates import MICROVOLTS_PER_STEP, duplicate_groups, signal_digest
 from ecs.rotation import SOURCES, corpus_index, load_waveforms
+
+# The sibling checkout's published digest cache, next to this repo.
+PUBLISHED_DIGESTS = (
+    Path(__file__).resolve().parents[2] / "ecg-data-chain/results/cache/signal_digests.json"
+)
 
 CHUNK = 500
 
@@ -95,7 +101,7 @@ def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
         "--compare",
-        default="/home/ruben/Developer/ecg/ecg-data-chain/results/cache/signal_digests.json",
+        default=os.environ.get("ECS_PUBLISHED_DIGESTS", str(PUBLISHED_DIGESTS)),
         help="a published digest cache to check this one against, when present",
     )
     parser.add_argument("--out", default=str(RESULTS_DIR / "duplicate_groups.json"))

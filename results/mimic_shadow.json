@@ -47,7 +47,7 @@
  },
  "check_against_demo_patients": {
   "available": true,
-  "path": "/Users/ruben/data/mimic-iv-demo/patients.csv",
+  "path": "patients.csv",
   "n_patients": 92,
   "n_tracings": 644,
   "n_tracings_clock_outside_2008_2019": 15,
