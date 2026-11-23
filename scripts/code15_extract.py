@@ -23,7 +23,7 @@ them:
 Needs numpy and h5py only, so the box runs it without the project:
 
     uv run --no-project --with h5py --with numpy python code15_extract.py spans \\
-        --zips ~/data/code15 --work ~/tmp-code15 --out ~/tmp-code15/spans.csv
+        --zips ../ecg-db/data/raw/code15 --work ~/tmp-code15 --out ~/tmp-code15/spans.csv
 """
 
 from __future__ import annotations

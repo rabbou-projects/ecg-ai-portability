@@ -9,7 +9,7 @@ the zip and the machine that reads the records can be two machines:
 
     scp scripts/mimic_extract.py list.txt box:/tmp/
     ssh box python3 /tmp/mimic_extract.py --zip Z --sums S --list /tmp/list.txt --tar - \\
-        | tar -x -C ~/data/mimic-iv-ecg
+        | tar -x -C ../ecg-db/data/raw/mimic-iv-ecg
 
 Standard library only, so it runs on a machine without the project's
 environment.  ``--list`` holds one record path per line, as ``record_list.csv``
