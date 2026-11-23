@@ -2,10 +2,10 @@
 # Fetch the PhysioNet corpora that need no account and no agreement.
 # Verified open (HTTP 200, unauthenticated) on 2026-08-23.
 #
-# Usage: ./scripts/fetch_open_corpora.sh [destination]   (default $HOME/data)
+# Usage: ./scripts/fetch_open_corpora.sh [destination]   (default $ECGDB_RAW_DIR, ecg-db's data/raw)
 set -uo pipefail
 
-DEST="${1:-$HOME/data}"
+DEST="${1:-${ECGDB_RAW_DIR:-$HOME/Developer/research/ecg-db/data/raw}}"
 mkdir -p "$DEST"
 failed=0
 

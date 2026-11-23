@@ -27,7 +27,7 @@ SNOMED code, how many records of each partition carry it.  Reproducing those
 columns from the headers is the oracle -- a parse that disagrees with the
 published table is wrong, whatever it reports.
 
-Usage: .venv/bin/python scripts/seen_target_count.py --bundle ~/data/challenge2021
+Usage: .venv/bin/python scripts/seen_target_count.py --bundle ../ecg-db/data/raw/challenge2021
 """
 
 from __future__ import annotations
