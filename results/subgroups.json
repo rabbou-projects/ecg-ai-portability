@@ -34,7 +34,7 @@
     }
   },
   "provenance": {
-    "commit": "4fe0eda4920c9054c22bd6fe67d265b0f15c84fa+dirty",
+    "commit": "b55842746619d1a92d2824a3d1d240eb06d3739c",
     "producers": {
       "scripts/subgroups.py": "d30305d81cf8956b2c6b54b654710291afbdb1e9b0191229523f7f9f516f0a5e",
       "src/ecs/conformal.py": "c434998b704a551d55bc2206a1a3ada6d42309947b0b92db11607746dcd068dc"

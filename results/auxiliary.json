@@ -4,7 +4,7 @@
   "n_draws": 200,
   "seed": 0,
   "provenance": {
-    "commit": "4fe0eda4920c9054c22bd6fe67d265b0f15c84fa+dirty",
+    "commit": "b55842746619d1a92d2824a3d1d240eb06d3739c",
     "producers": {
       "scripts/auxiliary.py": "f97487cd9854247efc470625796668ef23dea8dc4630190e925d13805302a26a",
       "scripts/shift_table.py": "f23b99bda2099c5d55cd8932c1d9a57744f016da7229f24ed5755b6cc2495916",
