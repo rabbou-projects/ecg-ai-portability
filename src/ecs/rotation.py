@@ -23,7 +23,7 @@ would be the better one for a reason that has nothing to do with the hospital.
 from __future__ import annotations
 
 import json
-from collections.abc import Iterator, Sequence
+from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
@@ -33,6 +33,7 @@ from numpy.typing import NDArray
 
 from . import code_ecg, zzu
 from .challenge import (
+    CHALLENGE_PARTITIONS,
     challenge_small_set_labels,
     join_ptbxl_to_challenge,
     partition_deviations,
@@ -44,19 +45,18 @@ from .config import (
     CODE15_SAMPLE,
     CODE_TEST_DIR,
     MIMIC_ECG_DIR,
-    PTBXL_DIR,
     RESULTS_DIR,
     SAMPLING_RATE_HZ,
-    SPH_DIR,
     WINDOW_SAMPLES,
     ZZU_DIR,
     ZZU_RECORDS_DIR,
 )
 from .duplicates import grouping_key
-from .ingest import Record, assemble_corpus, read_or_error, read_sph, read_wfdb
+from .ingest import Record, assemble_corpus, read_or_error, read_wfdb
 from .mimic import ROTATION_DEVIATIONS, rotation_frame
 from .small_set import SMALL_SET, refusals
 from .splits import patient_split
+from .store import SPH_SOURCE, ptbxl_database, ptbxl_record_id, sph_metadata, tracings
 
 __all__ = [
     "CAL_CAP",
@@ -279,7 +279,7 @@ def corpus_index(corpus: str, widen_duplicates: bool = True) -> CorpusIndex:
     split was leaking before it was widened; nothing else should turn it off.
     """
     if corpus == "ptbxl":
-        database = pd.read_csv(PTBXL_DIR / "ptbxl_database.csv", index_col="ecg_id")
+        database = ptbxl_database()
         challenge = scan_source("ptbxl")
         joined, _ = join_ptbxl_to_challenge(database, challenge)
         labels = challenge_small_set_labels(joined)
@@ -305,7 +305,7 @@ def corpus_index(corpus: str, widen_duplicates: bool = True) -> CorpusIndex:
                 "de-identification and are read into the oldest band"
             )
     elif corpus == "sph":
-        metadata = pd.read_csv(SPH_DIR / "metadata.csv")
+        metadata = sph_metadata()
         labels = sph_small_set_labels(metadata)
         frame = pd.DataFrame(
             {
@@ -370,11 +370,15 @@ def corpus_index(corpus: str, widen_duplicates: bool = True) -> CorpusIndex:
     return CorpusIndex(corpus, _split(frame, corpus in TARGET_ONLY), deviations)
 
 
+# The corpora cardiodb's store holds, and the store id of a frame's ``path``.
+STORE_IDS: dict[str, Callable[[object], str]] = {
+    "ptbxl": lambda path: ptbxl_record_id(str(path)),
+    "sph": lambda path: f"{SPH_SOURCE}:{path}",
+    **{source: str for source in CHALLENGE_PARTITIONS if source != "ptbxl"},
+}
+
+
 def _read(corpus: str, path: object) -> Record | Exception:
-    if corpus == "sph":
-        return read_or_error(read_sph, SPH_DIR / "records" / f"{path}.h5")
-    if corpus == "ptbxl":
-        return read_or_error(read_wfdb, PTBXL_DIR / str(path))
     if corpus == "code15":
         return read_or_error(code_ecg.read_code15, Path(str(path)))
     if corpus == "code_test":
@@ -383,8 +387,15 @@ def _read(corpus: str, path: object) -> Record | Exception:
 
 
 def _records(index: CorpusIndex, ids: Sequence[str]) -> Iterator[tuple[str, Record | Exception]]:
-    for record_id in ids:
-        yield record_id, _read(index.name, index.frame.loc[record_id, "path"])
+    paths = index.frame.loc[list(ids), "path"]
+    if index.name in STORE_IDS:
+        to_store = STORE_IDS[index.name]
+        held = tracings([to_store(p) for p in paths])
+        for record_id, (_, record) in zip(ids, held, strict=True):
+            yield record_id, record
+        return
+    for record_id, path in zip(ids, paths, strict=True):
+        yield record_id, _read(index.name, path)
 
 
 def load_waveforms(index: CorpusIndex, ids: Sequence[str]) -> tuple[NDArray[np.float32], list[str]]:

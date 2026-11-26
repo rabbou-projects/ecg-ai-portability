@@ -32,19 +32,11 @@ def data_root() -> Path:
 # Every corpus and derived file this repository keeps outside git sits under here.
 DATA = data_root()
 
-# PTB-XL is not copied: the 4.5 GB already on disk from an earlier project is
-# read in place.  Override with ECS_PTBXL_DIR when it moves.
-PTBXL_DIR = Path(os.environ.get("ECS_PTBXL_DIR", Path.home() / "Developer/ptbxl5d/data"))
-SPH_DIR = Path(os.environ.get("ECS_SPH_DIR", DATA / "sph"))
-ACS_DIR = Path(os.environ.get("ECS_ACS_DIR", DATA / "acs"))
+# The cardiodb checkout whose store holds PTB-XL, SPH, ACS-ECG and the Challenge-2021
+# partitions; ``ecs.store`` reads them through it, never from a publisher's files.
+# By default the sibling of this repository's main checkout.
+CARDIODB_PROJECT = Path(os.environ.get("ECS_CARDIODB_PROJECT", repo_root().parent / "cardiodb"))
 RESULTS_DIR = Path(os.environ.get("ECS_RESULTS_DIR", REPO_ROOT / "results"))
-
-# The PhysioNet/CinC Challenge-2021 bundle, read only to count how much
-# infarction its non-PTB-XL partitions carry.  It lives on the box, not in
-# this repository, and nothing else here depends on it being present.
-CHALLENGE2021_DIR = Path(
-    os.environ.get("ECS_CHALLENGE2021_DIR", Path.home() / "data/challenge2021")
-)
 
 # MIMIC-IV-ECG v1.0 (ODbL): the metadata tables at the top, the waveforms under
 # files/ in the release's own layout.  Only the records the rotation and the
@@ -102,7 +94,11 @@ SPH_MODIFIER_OLD = "332"
 # own acute-myocardial-infarction column and is the union of its STEMI and
 # NSTEMI columns on all but two of the 17,960 labelled records.
 ACS_MI_COLUMN = "AMI"
-ACS_LABELLED_SPLIT = "CSV/train.csv"
+ACS_LABELLED_SPLIT = "train"
+# The flags this study reads, each 0 or 1 in the publisher's CSV/train.csv.  The
+# corpus's twelve vessel columns (LM to DRCA) also take the value 2, which the
+# store does not keep, so they are not read through it.
+ACS_FLAGS = (ACS_MI_COLUMN, "OMI", "STEMI", "NSTEMI")
 
 # Every corpus is read at 500 Hz and cropped to ten seconds.  PTB-XL and
 # Chongqing records are exactly that long; Shandong records run from ten to

@@ -30,11 +30,11 @@ from pathlib import Path
 from typing import Any, cast
 
 import numpy as np
-import pandas as pd
 
-from ecs.config import ACS_DIR, ACS_LABELLED_SPLIT, PTBXL_DIR, RESULTS_DIR, SPH_DIR
+from ecs.config import ACS_LABELLED_SPLIT, RESULTS_DIR
 from ecs.provenance import provenance_block
 from ecs.report import CORRECTIONS, Source, Target, frozen_calibration_table
+from ecs.store import acs_table, ptbxl_database, sph_metadata
 
 # Confidence levels, loosest first.
 ALPHAS = (0.20, 0.10, 0.05)
@@ -62,13 +62,13 @@ PTBXL_DEVIATIONS = (
 )
 
 
-def patients_of(ids: list[str], root: Path) -> list[str]:
+def patients_of(ids: list[str]) -> list[str]:
     """The patient each fold-10 record belongs to, in the order of ``ids``."""
-    database = pd.read_csv(root / "ptbxl_database.csv", index_col="ecg_id")
+    database = ptbxl_database()
     return [str(database.loc[int(i), "patient_id"]) for i in ids]
 
 
-def n_patients(corpus: str, sph_dir: Path, acs_dir: Path) -> int:
+def n_patients(corpus: str) -> int:
     """How many distinct patients a corpus's records come from.
 
     Descriptive here rather than load-bearing: the external corpora are never
@@ -77,8 +77,8 @@ def n_patients(corpus: str, sph_dir: Path, acs_dir: Path) -> int:
     draws than its record count suggests.
     """
     if corpus == "sph":
-        return int(pd.read_csv(sph_dir / "metadata.csv")["Patient_ID"].nunique())
-    return int(pd.read_csv(acs_dir / ACS_LABELLED_SPLIT)["Patient_id"].nunique())
+        return int(sph_metadata()["Patient_ID"].nunique())
+    return int(acs_table(ACS_LABELLED_SPLIT)["Patient_id"].nunique())
 
 
 def paired(rows: list[dict[str, Any]], corpus: str, key: str, klass: str = "1") -> dict[str, Any]:
@@ -297,9 +297,6 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--scores", default=str(RESULTS_DIR / "baseline/scores.npz"))
     parser.add_argument("--external", default=str(RESULTS_DIR / "external"))
-    parser.add_argument("--ptbxl-dir", default=str(PTBXL_DIR))
-    parser.add_argument("--sph-dir", default=str(SPH_DIR))
-    parser.add_argument("--acs-dir", default=str(ACS_DIR))
     parser.add_argument("--out", default=str(RESULTS_DIR / "shift.json"))
     args = parser.parse_args(argv)
 
@@ -309,7 +306,7 @@ def main(argv: list[str] | None = None) -> int:
         "ptbxl",
         probs,
         labels,
-        patients_of([str(i) for i in ids], Path(args.ptbxl_dir)),
+        patients_of([str(i) for i in ids]),
         deviations=PTBXL_DEVIATIONS,
     )
 
@@ -322,7 +319,7 @@ def main(argv: list[str] | None = None) -> int:
             targets[corpus] = Target(
                 data["probs"],
                 data["labels"],
-                n_patients(corpus, Path(args.sph_dir), Path(args.acs_dir)),
+                n_patients(corpus),
                 tuple(sidecar["deviations"]),
             )
         provenance[corpus] = {

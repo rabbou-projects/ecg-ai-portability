@@ -7,7 +7,8 @@ from pathlib import Path
 
 import pytest
 
-from ecs.config import CHALLENGE2021_DIR, RESULTS_DIR
+from ecs import store
+from ecs.config import RESULTS_DIR
 from ecs.seen_target import (
     ALLOWED_PARTITIONS,
     ENOUGH_INFARCTION,
@@ -19,7 +20,6 @@ from ecs.seen_target import (
     PartitionCount,
     assess,
     count_partition,
-    dx_codes,
     parse_dx_line,
 )
 
@@ -85,13 +85,12 @@ class TestThePublishedCounts:
     """The parse against the organisers' table, on the bundle itself."""
 
     def test_every_code_matches_the_count_the_challenge_publishes(self) -> None:
-        training = CHALLENGE2021_DIR / "training"
-        if not training.is_dir():
-            pytest.skip(f"the Challenge-2021 bundle is not at {CHALLENGE2021_DIR}")
+        if not store.available():
+            pytest.skip("cardiodb's store is not here")
         for column, partition in enumerate(PUBLISHED_ORDER):
             tally: dict[str, int] = {}
-            for header in sorted((training / partition).rglob("*.hea")):
-                for code in dx_codes(header):
+            for dx in store.challenge_source(partition)["dx"]:
+                for code in dx:
                     tally[code] = tally.get(code, 0) + 1
             for code, expected in PUBLISHED.items():
                 assert tally.get(code, 0) == expected[column], (

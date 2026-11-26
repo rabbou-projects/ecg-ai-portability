@@ -13,38 +13,30 @@ from __future__ import annotations
 import pandas as pd
 import pytest
 
-from ecs.config import ACS_DIR, PTBXL_DIR, SPH_DIR
+from ecs import store
 from ecs.labels import MILabelSpec, acs_mi_label, ptbxl_mi_label, sph_mi_label
 
 pytestmark = pytest.mark.data
 
-ACS_CSV = ACS_DIR / "CSV/train.csv"
-
-
-def _skip_unless(*paths: object) -> None:
-    for path in paths:
-        if not getattr(path, "exists", lambda: False)():
-            pytest.skip(f"corpus not on disk: {path}")
-
 
 @pytest.fixture(scope="module")
 def ptbxl() -> tuple[pd.DataFrame, pd.DataFrame]:
-    database = PTBXL_DIR / "ptbxl_database.csv"
-    statements = PTBXL_DIR / "scp_statements.csv"
-    _skip_unless(database, statements)
-    return pd.read_csv(database, index_col="ecg_id"), pd.read_csv(statements, index_col=0)
+    if not store.available():
+        pytest.skip("cardiodb's store is not here")
+    return store.ptbxl_database(), store.scp_statements()
 
 
 def _read_acs() -> pd.DataFrame:
-    _skip_unless(ACS_CSV)
-    return pd.read_csv(ACS_CSV)
+    if not store.available():
+        pytest.skip("cardiodb's store is not here")
+    return store.acs_table("train")
 
 
 @pytest.fixture(scope="module")
 def sph() -> pd.DataFrame:
-    path = SPH_DIR / "metadata.csv"
-    _skip_unless(path)
-    return pd.read_csv(path)
+    if not store.available():
+        pytest.skip("cardiodb's store is not here")
+    return store.sph_metadata()
 
 
 class TestPTBXL:
@@ -105,16 +97,15 @@ class TestPrevalenceGap:
 
 class TestACS:
     def test_labelled_split_shape_and_withheld_test_labels(self) -> None:
-        _skip_unless(ACS_CSV)
-        train = pd.read_csv(ACS_CSV)
-        assert train.shape == (17960, 28)
+        train = _read_acs()
+        # Patient_id, ecg_row_record and the four flags ACS_FLAGS names.
+        assert train.shape == (17960, 6)
         assert train["Patient_id"].nunique() == 17018
-        test = pd.read_csv(ACS_CSV.with_name("test.csv"))
+        test = store.acs_table("test")
         assert "OMI" not in test.columns, "test labels are withheld by the publishers"
 
     def test_acute_label_counts(self) -> None:
-        _skip_unless(ACS_CSV)
-        train = pd.read_csv(ACS_CSV)
+        train = _read_acs()
         assert int(train["OMI"].sum()) == 1151
         assert int(train["STEMI"].sum()) == 1442
         assert int(train["AMI"].sum()) == 2679
@@ -145,8 +136,8 @@ class TestACS:
             acs_mi_label(train, MILabelSpec(chronic_only=True))
 
     def test_the_withheld_test_split_is_refused_rather_than_scored_blind(self) -> None:
-        _skip_unless(ACS_CSV)
-        test = pd.read_csv(ACS_CSV.with_name("test.csv"))
+        _read_acs()
+        test = store.acs_table("test")
         with pytest.raises(ValueError, match="withholds the labels"):
             acs_mi_label(test)
 

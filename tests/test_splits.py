@@ -7,7 +7,7 @@ import numpy as np
 import pandas as pd
 import pytest
 
-from ecs.config import ACS_DIR, PTBXL_DIR, SPH_DIR
+from ecs import store
 from ecs.splits import patient_split, ptbxl_benchmark_split
 
 HALVES = {"calibration": 0.5, "test": 0.5}
@@ -72,36 +72,27 @@ class TestSynthetic:
             patient_split(_synthetic_patients(), {"a": 0.5, "b": 0.4}, seed=0)
 
 
-def _skip_unless(*paths: object) -> None:
-    for path in paths:
-        if not getattr(path, "exists", lambda: False)():
-            pytest.skip(f"corpus not on disk: {path}")
-
-
 @pytest.mark.data
+@pytest.mark.skipif(not store.available(), reason="cardiodb's store is not here")
 class TestCorpora:
     def test_ptbxl(self) -> None:
-        _skip_unless(PTBXL_DIR / "ptbxl_database.csv")
-        database = pd.read_csv(PTBXL_DIR / "ptbxl_database.csv", index_col="ecg_id")
+        database = store.ptbxl_database()
         _assert_patient_disjoint(
             database["patient_id"], patient_split(database["patient_id"], HALVES, 0)
         )
 
     def test_ptbxl_benchmark_folds_were_drawn_by_patient(self) -> None:
-        _skip_unless(PTBXL_DIR / "ptbxl_database.csv")
-        database = pd.read_csv(PTBXL_DIR / "ptbxl_database.csv", index_col="ecg_id")
+        database = store.ptbxl_database()
         part = ptbxl_benchmark_split(database)
         _assert_patient_disjoint(database["patient_id"], part)
         assert part.value_counts().to_dict() == {"train": 17418, "validation": 2183, "test": 2198}
 
     def test_sph(self) -> None:
-        _skip_unless(SPH_DIR / "metadata.csv")
-        metadata = pd.read_csv(SPH_DIR / "metadata.csv", index_col="ECG_ID")
+        metadata = store.sph_metadata().set_index("ECG_ID")
         _assert_patient_disjoint(
             metadata["Patient_ID"], patient_split(metadata["Patient_ID"], HALVES, 0)
         )
 
     def test_acs(self) -> None:
-        _skip_unless(ACS_DIR / "CSV/train.csv")
-        train = pd.read_csv(ACS_DIR / "CSV/train.csv", index_col="ecg_row_record")
+        train = store.acs_table("train").set_index("ecg_row_record")
         _assert_patient_disjoint(train["Patient_id"], patient_split(train["Patient_id"], HALVES, 0))

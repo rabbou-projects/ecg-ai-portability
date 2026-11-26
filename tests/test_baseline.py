@@ -1,9 +1,9 @@
 """The supervised baseline: the run holds together, and the reference it is
 measured against is on record.
 
-The end-to-end test builds a miniature PTB-XL on disk -- its database table,
-its statement table, its WFDB records -- and runs the real script over it for
-one epoch.  Nothing here asserts the model is any good on eighty synthetic
+The end-to-end test builds a miniature PTB-XL -- its database table, its
+statement table, its tracings as the store returns them -- and runs the real
+script over it for one epoch.  Nothing here asserts the model is any good on eighty synthetic
 tracings; what it asserts is that the four files a result is made of appear,
 agree with each other, and hold the fields they are documented to hold.  The
 quality claim is checked against results/baseline.json once the
@@ -13,42 +13,37 @@ real run finishes.
 from __future__ import annotations
 
 import json
+from collections.abc import Iterator
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 import pytest
 import train_baseline as tb
-import wfdb
 
+from ecs import store
 from ecs.config import RESULTS_DIR
-from ecs.ingest import CANONICAL_LEADS
+from ecs.ingest import CANONICAL_LEADS, Record
+from ecs.store import ptbxl_record_id
 
 N_RECORDS = 80
 
 
-def _write_ptbxl(root: Path) -> None:
+def _ptbxl() -> tuple[pd.DataFrame, pd.DataFrame, dict[str, Record]]:
     """A PTB-XL small enough to train on: eighty records dealt round-robin into
     the ten folds, with MI alternating by block of ten so that every fold --
-    the eighth and tenth included -- holds four MI records and four without."""
+    the eighth and tenth included -- holds four MI records and four without.
+    Returns the database table, the statement table and the store's tracings."""
     rng = np.random.default_rng(0)
     rows = []
+    held = {}
     for k in range(N_RECORDS):
         is_mi = (k // 10) % 2 == 0
         name = f"records500/{k:05d}"
-        (root / "records500").mkdir(parents=True, exist_ok=True)
         # A different mean amplitude per class, so one epoch has something to learn.
-        signal = rng.normal(300 if is_mi else -300, 50, (5000, 12))
-        wfdb.wrsamp(
-            f"{k:05d}",
-            fs=500,
-            units=["mV"] * 12,
-            sig_name=list(CANONICAL_LEADS),
-            d_signal=signal.astype(np.int16),
-            fmt=["16"] * 12,
-            adc_gain=[1000.0] * 12,
-            baseline=[0] * 12,
-            write_dir=str(root / "records500"),
+        microvolts = rng.normal(300 if is_mi else -300, 50, (12, 5000)).astype(np.int16)
+        held[ptbxl_record_id(name)] = Record(
+            (microvolts / 1000.0).astype(np.float32), CANONICAL_LEADS, 500
         )
         rows.append(
             {
@@ -59,37 +54,40 @@ def _write_ptbxl(root: Path) -> None:
                 "scp_codes": "{'IMI': 100.0}" if is_mi else "{'NORM': 100.0}",
             }
         )
-    pd.DataFrame(rows).to_csv(root / "ptbxl_database.csv", index=False)
-    pd.DataFrame(
-        {
-            "Unnamed: 0": ["IMI", "NORM"],
-            "diagnostic": [1, 1],
-            "diagnostic_class": ["MI", "NORM"],
-        }
-    ).to_csv(root / "scp_statements.csv", index=False)
+    database = pd.DataFrame(rows).set_index("ecg_id")
+    statements = pd.DataFrame(
+        {"diagnostic": [1, 1], "diagnostic_class": ["MI", "NORM"]}, index=["IMI", "NORM"]
+    )
+    return database, statements, held
 
 
 class TestOneEpochEndToEnd:
     @pytest.fixture(scope="class")
     @classmethod
     def run(cls, tmp_path_factory: pytest.TempPathFactory) -> Path:
-        root = tmp_path_factory.mktemp("ptbxl")
         out = tmp_path_factory.mktemp("baseline")
-        _write_ptbxl(root)
-        code = tb.main(
-            [
-                "--epochs",
-                "1",
-                "--batch-size",
-                "16",
-                "--bootstrap-draws",
-                "50",
-                "--ptbxl-dir",
-                str(root),
-                "--out",
-                str(out),
-            ]
-        )
+        database, statements, held = _ptbxl()
+
+        def tracings(ids: list[str]) -> Iterator[tuple[str, Record]]:
+            yield from ((i, held[i]) for i in ids)
+
+        with pytest.MonkeyPatch.context() as patch:
+            # cardiodb's store is a subprocess in its own environment; it is the boundary.
+            patch.setattr(tb, "ptbxl_database", lambda: database)
+            patch.setattr(tb, "scp_statements", lambda: statements)
+            patch.setattr(store, "tracings", tracings)
+            code = tb.main(
+                [
+                    "--epochs",
+                    "1",
+                    "--batch-size",
+                    "16",
+                    "--bootstrap-draws",
+                    "50",
+                    "--out",
+                    str(out),
+                ]
+            )
         assert code == 0
         return out
 

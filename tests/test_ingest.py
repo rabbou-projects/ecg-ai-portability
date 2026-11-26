@@ -12,13 +12,12 @@ from __future__ import annotations
 import json
 from pathlib import Path
 
-import h5py
 import numpy as np
-import pandas as pd
 import pytest
 import wfdb
 
-from ecs.config import ACS_DIR, PTBXL_DIR, RESULTS_DIR, SPH_DIR
+from ecs import store
+from ecs.config import RESULTS_DIR
 from ecs.ingest import (
     CANONICAL_LEADS,
     Record,
@@ -210,36 +209,45 @@ class TestWfdbScale:
 def _skip_unless(*paths: Path) -> None:
     for path in paths:
         if not path.exists():
-            pytest.skip(f"corpus not on disk: {path}")
+            pytest.skip(f"not on disk: {path}")
+
+
+needs_store = pytest.mark.skipif(not store.available(), reason="cardiodb's store is not here")
 
 
 @pytest.mark.data
+@needs_store
 class TestPTBXL:
     def test_first_sample_of_record_1_matches_its_header_in_every_lead(self) -> None:
-        """00001_hr.hea lists each lead's initial ADC value; at 1000 units per
-        millivolt those are the first canonical samples, in header order."""
-        _skip_unless(PTBXL_DIR / "ptbxl_database.csv")
-        database = pd.read_csv(PTBXL_DIR / "ptbxl_database.csv", index_col="ecg_id")
+        """A wrong lead order or unit in the store read would mislabel every PTB-XL tracing.
+
+        00001_hr.hea lists each lead's initial ADC value (-115, -50, 65, 82, -90, 7,
+        -65, -40, -5, -35, -35, -75, leads I to V6); at 1000 units per millivolt
+        those are the first canonical samples."""
+        database = store.ptbxl_database()
         corpus = load_ptbxl(database, ids=[1, 2, 3])
         assert corpus.x.shape == (3, 12, 5000)
         assert corpus.x.dtype == np.float32
         assert corpus.ids == ["1", "2", "3"]
         assert corpus.excluded == {}
         assert corpus.deviations == []
-        header = wfdb.rdheader(str(PTBXL_DIR / str(database.at[1, "filename_hr"])))
-        assert [name.upper() for name in header.sig_name] == [n.upper() for n in CANONICAL_LEADS]
-        np.testing.assert_allclose(corpus.x[0, :, 0], np.array(header.init_value) / 1000.0)
-        np.testing.assert_allclose(
+        np.testing.assert_array_equal(
             corpus.x[0, :, 0],
-            np.array([-115, -50, 65, 82, -90, 7, -65, -40, -5, -35, -35, -75]) / 1000.0,
+            (np.array([-115, -50, 65, 82, -90, 7, -65, -40, -5, -35, -35, -75]) / 1000.0).astype(
+                np.float32
+            ),
         )
 
 
 @pytest.mark.data
+@needs_store
 class TestSPH:
-    def test_record_a00001_is_read_as_shipped_and_a00002_is_cropped(self) -> None:
-        _skip_unless(SPH_DIR / "metadata.csv", SPH_DIR / "records/A00002.h5")
-        metadata = pd.read_csv(SPH_DIR / "metadata.csv")
+    def test_record_a00001_is_read_to_the_microvolt_and_a00002_is_cropped(self) -> None:
+        """SPH ships float16 millivolts; the store holds them rounded to the microvolt.
+
+        A00001 starts at 0.0216, 0.0216, 0.0208, 0.0184 mV in lead I as shipped,
+        so 22, 22, 21, 18 µV; A00002 runs twelve seconds and is cropped to ten."""
+        metadata = store.sph_metadata()
         corpus = load_sph(metadata, ids=["A00001", "A00002"])
         assert corpus.x.shape == (2, 12, 5000)
         assert corpus.x.dtype == np.float32
@@ -249,56 +257,48 @@ class TestSPH:
             "taken from Liu et al. 2022, Data Records",
             "1 of 2 records longer than ten seconds, cropped to the first",
         ]
-        # Values as stored (float16 millivolts), read back independently.
-        with h5py.File(SPH_DIR / "records/A00002.h5", "r") as f:
-            stored = f["ecg"][()]
-        assert stored.dtype == np.float16
-        assert stored.shape == (12, 6000)
-        np.testing.assert_array_equal(corpus.x[1], stored[:, :5000].astype(np.float32))
         np.testing.assert_array_equal(
-            corpus.x[0, 0, :4],
-            np.array([0.0216, 0.0216, 0.0208, 0.0184], dtype=np.float16).astype(np.float32),
+            corpus.x[0, 0, :4], np.array([0.022, 0.022, 0.021, 0.018], dtype=np.float32)
         )
 
 
 @pytest.mark.data
+@needs_store
 class TestACS:
     def test_the_two_seven_second_records_are_excluded_with_the_reason(self) -> None:
-        """03228.dat and 14262.dat hold 3,500 samples under a header that
-        claims 5,000; wfdb refuses them and the loader reports that."""
-        _skip_unless(ACS_DIR / "CSV/train.csv", ACS_DIR / "row_data/03228.dat")
-        train = pd.read_csv(ACS_DIR / "CSV/train.csv")
-        corpus = load_acs(train, ids=["03228", "04904", "14262"])
+        """A seven-second tracing padded to ten would enter the scores as a real one.
+
+        03228.dat and 14262.dat hold 3,500 samples under a header that claims
+        5,000; the store keeps the 3,500 and the chain refuses them as short."""
+        corpus = load_acs(store.acs_table("train"), ids=["03228", "04904", "14262"])
         assert corpus.ids == ["04904"]
         assert corpus.excluded == {
-            "03228": "unreadable: Samples were not loaded correctly",
-            "14262": "unreadable: Samples were not loaded correctly",
+            "03228": "record is shorter than ten seconds: 3500 samples",
+            "14262": "record is shorter than ten seconds: 3500 samples",
         }
 
     def test_the_three_records_with_a_missing_sample_are_excluded(self) -> None:
-        """WFDB format 16 marks a missing sample with -32768, which wfdb reads
-        back as NaN; three Chongqing records carry at least one."""
-        _skip_unless(ACS_DIR / "CSV/train.csv", ACS_DIR / "row_data/16558.dat")
-        train = pd.read_csv(ACS_DIR / "CSV/train.csv")
-        corpus = load_acs(train, ids=["02008", "03054", "16558"])
+        """A missing sample stored as 0 µV would enter the scores as a real value.
+
+        WFDB format 16 marks a missing sample with -32768; three Chongqing
+        records carry at least one, and the store counts them in n_nonfinite."""
+        corpus = load_acs(store.acs_table("train"), ids=["02008", "03054", "16558"])
         assert corpus.ids == []
         assert corpus.excluded == dict.fromkeys(["02008", "03054", "16558"], "NaN or Inf sample")
 
-    def test_record_04904_first_samples_and_header_lead_order(self) -> None:
-        _skip_unless(ACS_DIR / "CSV/train.csv", ACS_DIR / "row_data/04904.hea")
-        train = pd.read_csv(ACS_DIR / "CSV/train.csv")
+    def test_record_04904_first_samples_and_lead_order(self) -> None:
+        """04904.hea lists I to V6 at 1000 units per mV, first samples 0, 4, 4, -2, -2,
+        4, 0, -118, 20, 2, 4, 16; a misread order or unit changes them."""
+        train = store.acs_table("train")
         assert train.at[0, "ecg_row_record"] == "04904.dat"
         corpus = load_acs(train, ids=["04904", "00001"])
         assert corpus.x.shape == (2, 12, 5000)
         assert corpus.x.dtype == np.float32
         assert corpus.excluded == {}
         assert corpus.deviations == []
-        header = wfdb.rdheader(str(ACS_DIR / "row_data/04904"))
-        assert tuple(header.sig_name) == CANONICAL_LEADS
-        assert set(header.adc_gain) == {1000.0} and set(header.baseline) == {0}
-        np.testing.assert_allclose(
+        np.testing.assert_array_equal(
             corpus.x[0, :, 0],
-            np.array([0, 4, 4, -2, -2, 4, 0, -118, 20, 2, 4, 16]) / 1000.0,
+            (np.array([0, 4, 4, -2, -2, 4, 0, -118, 20, 2, 4, 16]) / 1000.0).astype(np.float32),
         )
 
 

@@ -34,13 +34,13 @@
     }
   },
   "provenance": {
-    "commit": "e06f939ad45e9544ab7da4e824279d8de18fe842",
+    "commit": "4fe0eda4920c9054c22bd6fe67d265b0f15c84fa+dirty",
     "producers": {
-      "scripts/subgroups.py": "d4849aa28d57845e49bf6b34d636909643a3c7868783c511c8085100ae03e2ea",
+      "scripts/subgroups.py": "d30305d81cf8956b2c6b54b654710291afbdb1e9b0191229523f7f9f516f0a5e",
       "src/ecs/conformal.py": "c434998b704a551d55bc2206a1a3ada6d42309947b0b92db11607746dcd068dc"
     }
   },
-  "seconds": 38.6,
+  "seconds": 41.2,
   "coverage": {
     "plain": {
       "age:0-49:all": {

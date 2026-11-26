@@ -45,15 +45,16 @@ from numpy.typing import NDArray
 from sklearn.metrics import average_precision_score, roc_auc_score
 from torch import Tensor, nn
 
-from ecs.config import PTBXL_DIR, RESULTS_DIR
+from ecs.config import RESULTS_DIR
 from ecs.encoders import machine_info
 from ecs.ingest import load_ptbxl
 from ecs.labels import MILabelSpec, ptbxl_mi_label
 from ecs.metrics import bootstrap_ci
 from ecs.models import ResNet1d
 from ecs.splits import ptbxl_benchmark_split
+from ecs.store import ptbxl_database, scp_statements
 
-CHUNK = 500  # records read from disk at once, so no fold is read twice
+CHUNK = 500  # records read from the store at once, so no fold is read twice
 
 
 @dataclass(frozen=True)
@@ -84,13 +85,12 @@ def read_fold(
     labels: pd.Series,
     name: str,
     wanted: pd.Index,
-    root: Path = PTBXL_DIR,
 ) -> Fold:
     """The records of one part, read in chunks so the corpus is never held twice."""
     ids: list[str] = []
     blocks: list[NDArray[np.float32]] = []
     for start in range(0, len(wanted), CHUNK):
-        chunk = load_ptbxl(database, root=root, ids=[int(i) for i in wanted[start : start + CHUNK]])
+        chunk = load_ptbxl(database, ids=[int(i) for i in wanted[start : start + CHUNK]])
         ids.extend(chunk.ids)
         blocks.append(chunk.x)
         print(f"  {name}: {len(ids):>6} / {len(wanted)}", flush=True)
@@ -224,7 +224,6 @@ def main(argv: list[str] | None = None) -> int:
         help="use only the first N records of each fold; for checking the run, not for a result",
     )
     parser.add_argument("--out", default=str(RESULTS_DIR / "baseline"))
-    parser.add_argument("--ptbxl-dir", default=str(PTBXL_DIR))
     args = parser.parse_args(argv)
     settings = Settings(
         epochs=args.epochs,
@@ -236,9 +235,8 @@ def main(argv: list[str] | None = None) -> int:
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
 
-    ptbxl = Path(args.ptbxl_dir)
-    database = pd.read_csv(ptbxl / "ptbxl_database.csv", index_col="ecg_id")
-    statements = pd.read_csv(ptbxl / "scp_statements.csv", index_col=0)
+    database = ptbxl_database()
+    statements = scp_statements()
     spec = MILabelSpec()
     labels = ptbxl_mi_label(database, statements, spec)
     part = ptbxl_benchmark_split(database)
@@ -249,7 +247,7 @@ def main(argv: list[str] | None = None) -> int:
         wanted = part.index[part == name]
         if args.max_records is not None:
             wanted = wanted[: args.max_records]
-        folds[name] = read_fold(database, labels, name, wanted, ptbxl)
+        folds[name] = read_fold(database, labels, name, wanted)
         print(
             f"{name}: {len(folds[name].ids)} records, {int(folds[name].y.sum())} MI",
             flush=True,

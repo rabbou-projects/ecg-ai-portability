@@ -36,13 +36,14 @@ import pandas as pd
 import torch
 from numpy.typing import NDArray
 
-from ecs.config import ACS_DIR, ACS_LABELLED_SPLIT, RESULTS_DIR, SPH_DIR
+from ecs.config import ACS_LABELLED_SPLIT, RESULTS_DIR
 from ecs.encoders import machine_info
 from ecs.ingest import SPH_DEVIATION, Corpus, load_acs, load_sph
 from ecs.labels import MILabelSpec, acs_mi_label, sph_mi_label
 from ecs.models import ResNet1d
+from ecs.store import acs_table, sph_metadata
 
-CHUNK = 500  # records read from disk at once, so the corpus is never held whole
+CHUNK = 500  # records read from the store at once, so the corpus is never held whole
 
 
 @dataclass
@@ -123,14 +124,14 @@ def score_in_chunks(
     return Scored(ids, y, probs, excluded, resampled, cropped, notes)
 
 
-def sph_job(model: ResNet1d, centre: float, scale: float, root: Path, limit: int | None) -> Scored:
-    metadata = pd.read_csv(root / "metadata.csv")
+def sph_job(model: ResNet1d, centre: float, scale: float, limit: int | None) -> Scored:
+    metadata = sph_metadata()
     labels = sph_mi_label(metadata).set_axis(metadata["ECG_ID"].astype(str))
     wanted = [str(i) for i in metadata["ECG_ID"]][:limit]
     return score_in_chunks(
         "sph",
         wanted,
-        lambda block: load_sph(metadata, root, ids=block),
+        lambda block: load_sph(metadata, ids=block),
         labels,
         model,
         centre,
@@ -143,21 +144,22 @@ def sph_job(model: ResNet1d, centre: float, scale: float, root: Path, limit: int
     )
 
 
-def acs_job(model: ResNet1d, centre: float, scale: float, root: Path, limit: int | None) -> Scored:
-    table = pd.read_csv(root / ACS_LABELLED_SPLIT)
+def acs_job(model: ResNet1d, centre: float, scale: float, limit: int | None) -> Scored:
+    table = acs_table(ACS_LABELLED_SPLIT)
     names = [str(f).removesuffix(".dat") for f in table["ecg_row_record"]]
     labels = acs_mi_label(table, MILabelSpec()).set_axis(pd.Index(names))
     return score_in_chunks(
         "acs",
         names[:limit],
-        lambda block: load_acs(table, root, ids=block),
+        lambda block: load_acs(table, ids=block),
         labels,
         model,
         centre,
         scale,
         [
-            f"only the {len(table)} records of {ACS_LABELLED_SPLIT} carry labels; the published "
-            "test split withholds them, so the remaining waveforms on disk are not scored",
+            f"only the {len(table)} records of CSV/{ACS_LABELLED_SPLIT}.csv carry labels; "
+            "the published test split withholds them, so the remaining waveforms on disk "
+            "are not scored",
             "the label is the corpus's own AMI column, read from a coronary angiogram rather "
             "than from the tracing, and acute by construction; PTB-XL's and Shandong's "
             "positives are dominated by the chronic infarct pattern, so the two label sets "
@@ -177,8 +179,6 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--checkpoint", default=str(RESULTS_DIR / "baseline/model.pt"))
     parser.add_argument("--out", default=str(RESULTS_DIR / "external"))
-    parser.add_argument("--sph-dir", default=str(SPH_DIR))
-    parser.add_argument("--acs-dir", default=str(ACS_DIR))
     parser.add_argument(
         "--max-records",
         type=int,
@@ -196,13 +196,13 @@ def main(argv: list[str] | None = None) -> int:
     commit = git_commit()
 
     jobs = {
-        "sph": (sph_job, Path(args.sph_dir), "Shandong Provincial Hospital"),
-        "acs": (acs_job, Path(args.acs_dir), "Chongqing ACS-ECG"),
+        "sph": (sph_job, "Shandong Provincial Hospital"),
+        "acs": (acs_job, "Chongqing ACS-ECG"),
     }
     for name in args.corpus:
-        job, root, title = jobs[name]
+        job, title = jobs[name]
         started = time.perf_counter()
-        scored = job(model, centre, scale, root, args.max_records)
+        scored = job(model, centre, scale, args.max_records)
         seconds = round(time.perf_counter() - started, 1)
         np.savez_compressed(
             out / f"{name}.npz",

@@ -37,7 +37,7 @@ from ecs.challenge import (
     scan_source,
     sph_small_set_labels,
 )
-from ecs.config import MAPPINGS_DIR, PTBXL_DIR, RESULTS_DIR, SPH_DIR
+from ecs.config import MAPPINGS_DIR, RESULTS_DIR
 from ecs.small_set import (
     AMBIGUITIES,
     SMALL_SET,
@@ -48,6 +48,7 @@ from ecs.small_set import (
     scored_diagnoses,
     snomed_codes_for,
 )
+from ecs.store import ptbxl_database, sph_metadata
 
 SPH_DEVIATIONS = (
     "diagnoses are AHA codes bridged to SNOMED by Leinonen et al.'s table, not the "
@@ -132,7 +133,7 @@ def challenge_corpus(source: str) -> tuple[pd.DataFrame, dict[str, Any]]:
 
 def ptbxl_block(challenge: pd.DataFrame) -> dict[str, Any]:
     """PTB-XL as the study reads it: its own waveforms and patients, the bundle's codes."""
-    database = pd.read_csv(PTBXL_DIR / "ptbxl_database.csv", index_col="ecg_id")
+    database = ptbxl_database()
     joined, fell_out = join_ptbxl_to_challenge(database, challenge)
     labels = challenge_small_set_labels(joined)
     scp = database.loc[joined.index, "scp_codes"].apply(ast.literal_eval)
@@ -168,7 +169,7 @@ def ptbxl_block(challenge: pd.DataFrame) -> dict[str, Any]:
 
 def sph_block() -> dict[str, Any]:
     """Shandong: AHA codes through Leinonen's table, with the modifier choice measured."""
-    metadata = pd.read_csv(SPH_DIR / "metadata.csv")
+    metadata = sph_metadata()
     labels = sph_small_set_labels(metadata)
     exact_map = aha_to_snomed()
     tokens = (

@@ -53,14 +53,16 @@ def test_ecs_data_wins(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
     assert config.data_root() == Path.home() / "somewhere"
 
 
-def test_the_corpora_kept_in_this_repository_default_under_the_data_folder(tmp_path: Path) -> None:
-    """The defaults are read at import, so each one is read in a fresh interpreter."""
-    code = "from ecs import config; print(config.SPH_DIR, config.ACS_DIR, sep='\\n')"
-    env = {"ECS_DATA": str(tmp_path)}
+def test_ecs_cardiodb_project_wins(tmp_path: Path) -> None:
+    """A store moved off the sibling folder is still found; else every corpus read fails.
+
+    The default is read at import, so it is read in a fresh interpreter."""
+    code = "from ecs import config; print(config.CARDIODB_PROJECT)"
+    env = {"ECS_CARDIODB_PROJECT": str(tmp_path / "elsewhere")}
     out = subprocess.run(
         [sys.executable, "-I", "-c", code], env=env, capture_output=True, text=True, check=True
     )
-    assert out.stdout.split() == [str(tmp_path / "sph"), str(tmp_path / "acs")]
+    assert out.stdout.strip() == str(tmp_path / "elsewhere")
 
 
 def test_the_derived_data_defaults_under_the_data_folder(tmp_path: Path) -> None:

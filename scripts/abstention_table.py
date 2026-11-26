@@ -22,19 +22,19 @@ import time
 from pathlib import Path
 
 import numpy as np
-import pandas as pd
 
-from ecs.config import PTBXL_DIR, RESULTS_DIR
+from ecs.config import RESULTS_DIR
 from ecs.provenance import provenance_block
 from ecs.report import REDRAW_CORRECTIONS, SCORES, repeated_split_report
+from ecs.store import ptbxl_database
 
 # Confidence levels, loosest first.
 ALPHAS = (0.20, 0.10, 0.05)
 
 
-def patients_of(ids: list[str], root: Path) -> list[str]:
+def patients_of(ids: list[str]) -> list[str]:
     """The patient each fold-10 record belongs to, in the order of ``ids``."""
-    database = pd.read_csv(root / "ptbxl_database.csv", index_col="ecg_id")
+    database = ptbxl_database()
     return [str(database.loc[int(i), "patient_id"]) for i in ids]
 
 
@@ -48,13 +48,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--draws", type=int, default=200)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--scores", default=str(RESULTS_DIR / "baseline/scores.npz"))
-    parser.add_argument("--ptbxl-dir", default=str(PTBXL_DIR))
     parser.add_argument("--out", default=str(RESULTS_DIR / "abstention.json"))
     args = parser.parse_args(argv)
 
     with np.load(args.scores, allow_pickle=False) as data:
         ids, labels, probs = list(data["ids"]), data["labels"], data["probs"]
-    patients = patients_of([str(i) for i in ids], Path(args.ptbxl_dir))
+    patients = patients_of([str(i) for i in ids])
 
     started = time.perf_counter()
     rows = [

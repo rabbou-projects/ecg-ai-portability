@@ -13,6 +13,9 @@ dependencies = [
     "h5py>=3.11",
     "matplotlib>=3.9",
     "tqdm>=4.66",
+    # ecs.store: cardiodb hands its tables over as Parquet.  22 and later need numpy 2,
+    # which torch 2.2.2 does not take.
+    "pyarrow>=17,<22",
 ]
 
 [project.optional-dependencies]
@@ -63,4 +66,7 @@ exclude = ["^third_party/", "^data/", "^\\.claude/"]
 [tool.pytest.ini_options]
 testpaths = ["tests"]
 addopts = "-q"
-markers = ["data: needs the ECG corpora on disk"]
+markers = [
+    "data: needs the ECG corpora on disk",
+    "repo_scan: parses the repository tree",
+]

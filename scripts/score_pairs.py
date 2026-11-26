@@ -26,7 +26,8 @@ import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
 
-from ecs.config import ACS_DIR, PTBXL_DIR, RESULTS_DIR, SPH_DIR
+from ecs.config import RESULTS_DIR
+from ecs.store import acs_table, ptbxl_database, sph_metadata
 
 ROTATION = ("ptbxl", "sph", "chapman_ningbo", "georgia", "cpsc")
 # Records of Georgia, CPSC and Chapman-Ningbo carry no patient identifier; the
@@ -57,13 +58,13 @@ def _patients(corpus: str, ids: list[str]) -> pd.Series:
     if corpus in ONE_RECORD_PER_PATIENT:
         return pd.Series(ids, index=ids)
     if corpus == "ptbxl":
-        table = pd.read_csv(PTBXL_DIR / "ptbxl_database.csv", index_col="ecg_id")
+        table = ptbxl_database()
         return pd.Series([str(table.loc[int(i), "patient_id"]) for i in ids], index=ids)
     if corpus == "sph":
-        table = pd.read_csv(SPH_DIR / "metadata.csv", index_col="ECG_ID")
+        table = sph_metadata().set_index("ECG_ID")
         return pd.Series([str(table.loc[i, "Patient_ID"]) for i in ids], index=ids)
     if corpus == "acs":
-        table = pd.read_csv(ACS_DIR / "CSV/train.csv")
+        table = acs_table("train")
         key = table["ecg_row_record"].str.removesuffix(".dat")
         by_record = dict(zip(key, table["Patient_id"].astype(str), strict=True))
         return pd.Series([by_record[i] for i in ids], index=ids)

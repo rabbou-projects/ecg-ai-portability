@@ -4,15 +4,15 @@
   "n_draws": 200,
   "seed": 0,
   "provenance": {
-    "commit": "ff8e0ee18f3cb8a240563ae0389e3ed98dfddd80",
+    "commit": "4fe0eda4920c9054c22bd6fe67d265b0f15c84fa+dirty",
     "producers": {
-      "scripts/auxiliary.py": "8acc434edf14cb88780b5af56b53c32abf18104a1febfa57ce0d744062a92bf0",
-      "scripts/shift_table.py": "b8d35d311a44d187d5ca0f92f14caf8b543409792123a9a09c3ed0318f3453d6",
+      "scripts/auxiliary.py": "f97487cd9854247efc470625796668ef23dea8dc4630190e925d13805302a26a",
+      "scripts/shift_table.py": "f23b99bda2099c5d55cd8932c1d9a57744f016da7229f24ed5755b6cc2495916",
       "src/ecs/conformal.py": "c434998b704a551d55bc2206a1a3ada6d42309947b0b92db11607746dcd068dc",
       "src/ecs/metrics.py": "e04509abce93b400ac90cbd102a63a747f0559de4d2c9d20cdc2ee4ce1cf90e6"
     }
   },
-  "seconds": 5.3,
+  "seconds": 28.7,
   "differences": {
     "note": "MI coverage under class-conditional calibration minus MI coverage under pooled calibration, formed inside each replicate. The source cohort is resampled by patient and the target cohorts by record.",
     "n_bootstrap": 2000,

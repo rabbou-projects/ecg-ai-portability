@@ -45,7 +45,7 @@ import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
 
-from ecs.config import PTBXL_DIR, RESULTS_DIR
+from ecs.config import RESULTS_DIR
 from ecs.conformal import (
     conformal_quantile,
     lac_scores,
@@ -55,6 +55,7 @@ from ecs.conformal import (
     predict_sets_per_class,
 )
 from ecs.provenance import provenance_block
+from ecs.store import ptbxl_database
 
 ALPHA = 0.10
 PLAIN_SENSITIVITY = 1.0 - ALPHA
@@ -74,9 +75,9 @@ AGE_LEVELS = tuple(f"{lo}-{hi - 1}" if hi <= 300 else f"{lo}+" for lo, hi in AGE
 CONTRASTS = (("age", AGE_LEVELS[0], AGE_LEVELS[-1]), ("sex", "male", "female"))
 
 
-def read_metadata(ids: NDArray[Any], root: Path) -> pd.DataFrame:
+def read_metadata(ids: NDArray[Any]) -> pd.DataFrame:
     """Patient, sex and age band for each scored record, in the order of ``ids``."""
-    database = pd.read_csv(root / "ptbxl_database.csv", index_col="ecg_id")
+    database = ptbxl_database()
     rows = database.loc[[int(i) for i in ids]]
     band = pd.Series("", index=rows.index, dtype=object)
     for (low, high), name in zip(AGE_EDGES, AGE_LEVELS, strict=True):
@@ -270,7 +271,7 @@ def build(draws: int, bootstrap: int, seed: int) -> dict[str, Any]:
     bundle = np.load(RESULTS_DIR / "baseline/scores.npz")
     probs = bundle["probs"]
     labels = bundle["labels"]
-    meta = read_metadata(bundle["ids"], PTBXL_DIR)
+    meta = read_metadata(bundle["ids"])
     body = collect(probs, labels, meta, draws, bootstrap, seed)
     return {
         "question": (

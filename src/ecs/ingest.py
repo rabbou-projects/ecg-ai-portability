@@ -30,7 +30,7 @@ import wfdb
 from numpy.typing import NDArray
 from scipy.signal import resample_poly
 
-from .config import ACS_DIR, N_LEADS, PTBXL_DIR, SAMPLING_RATE_HZ, SPH_DIR, WINDOW_SAMPLES
+from .config import N_LEADS, SAMPLING_RATE_HZ, WINDOW_SAMPLES
 
 __all__ = [
     "CANONICAL_LEADS",
@@ -220,59 +220,69 @@ def assemble_corpus(
 
 
 # --------------------------------------------------------------------------
-# The three corpora, read in place
+# The three corpora, read from cardiodb's store
 # --------------------------------------------------------------------------
 
 
+def _from_store(pairs: Sequence[tuple[str, str]]) -> Iterator[tuple[str, Record | Exception]]:
+    """(this repository's id, the store's id) pairs, read in that order."""
+    from .store import tracings
+
+    ours = [mine for mine, _ in pairs]
+    for mine, (_, record) in zip(ours, tracings([theirs for _, theirs in pairs]), strict=True):
+        yield mine, record
+
+
 def iter_ptbxl(
-    database: pd.DataFrame, root: Path = PTBXL_DIR, ids: Sequence[int] | None = None
+    database: pd.DataFrame, ids: Sequence[int] | None = None
 ) -> Iterator[tuple[str, Record | Exception]]:
-    """PTB-XL records at 500 Hz.  ``database`` is ptbxl_database.csv indexed by
-    ecg_id; the path of each record is the database's own ``filename_hr``."""
+    """PTB-XL records at 500 Hz.  ``database`` is ``store.ptbxl_database()``; each
+    record is the one its ``filename_hr`` names."""
+    from .store import ptbxl_record_id
+
     rows = database if ids is None else database.loc[list(ids)]
-    for ecg_id, filename in rows["filename_hr"].items():
-        yield str(ecg_id), read_or_error(read_wfdb, root / str(filename))
+    pairs = [(str(e), ptbxl_record_id(str(f))) for e, f in rows["filename_hr"].items()]
+    return _from_store(pairs)
 
 
 def iter_sph(
-    metadata: pd.DataFrame, root: Path = SPH_DIR, ids: Sequence[str] | None = None
+    metadata: pd.DataFrame, ids: Sequence[str] | None = None
 ) -> Iterator[tuple[str, Record | Exception]]:
-    """Shandong records.  ``metadata`` is the corpus metadata.csv."""
+    """Shandong records.  ``metadata`` is ``store.sph_metadata()``."""
+    from .store import SPH_SOURCE
+
     wanted = metadata["ECG_ID"] if ids is None else pd.Series(list(ids))
-    for ecg_id in wanted:
-        yield str(ecg_id), read_or_error(read_sph, root / "records" / f"{ecg_id}.h5")
+    return _from_store([(str(e), f"{SPH_SOURCE}:{e}") for e in wanted])
 
 
 def iter_acs(
-    table: pd.DataFrame, root: Path = ACS_DIR, ids: Sequence[str] | None = None
+    table: pd.DataFrame, ids: Sequence[str] | None = None
 ) -> Iterator[tuple[str, Record | Exception]]:
-    """Chongqing records.  ``table`` is train.csv or test.csv, whose
+    """Chongqing records.  ``table`` is ``store.acs_table(split)``, whose
     ``ecg_row_record`` column names the file (``04904.dat``); ``ids`` are those
     names without the extension."""
+    from .store import ACS_SOURCE
+
     names = (
         [str(f).removesuffix(".dat") for f in table["ecg_row_record"]] if ids is None else list(ids)
     )
-    for name in names:
-        yield name, read_or_error(read_wfdb, root / "row_data" / name)
+    return _from_store([(n, f"{ACS_SOURCE}:{n}") for n in names])
 
 
-def load_ptbxl(
-    database: pd.DataFrame, root: Path = PTBXL_DIR, ids: Sequence[int] | None = None
-) -> Corpus:
-    """Canonical PTB-XL: WFDB at 1000 ADC units per millivolt, read by its header."""
+def load_ptbxl(database: pd.DataFrame, ids: Sequence[int] | None = None) -> Corpus:
+    """Canonical PTB-XL: the publisher's 1,000 units per millivolt, read back exactly."""
     n = len(database) if ids is None else len(ids)
-    return assemble_corpus("ptbxl", iter_ptbxl(database, root, ids), n)
+    return assemble_corpus("ptbxl", iter_ptbxl(database, ids), n)
 
 
-def load_sph(
-    metadata: pd.DataFrame, root: Path = SPH_DIR, ids: Sequence[str] | None = None
-) -> Corpus:
-    """Canonical Shandong: HDF5 float16 millivolts, lead order from the paper."""
+def load_sph(metadata: pd.DataFrame, ids: Sequence[str] | None = None) -> Corpus:
+    """Canonical Shandong: float16 millivolts rounded to the microvolt, lead order from
+    the paper."""
     n = len(metadata) if ids is None else len(ids)
-    return assemble_corpus("sph", iter_sph(metadata, root, ids), n, [SPH_DEVIATION])
+    return assemble_corpus("sph", iter_sph(metadata, ids), n, [SPH_DEVIATION])
 
 
-def load_acs(table: pd.DataFrame, root: Path = ACS_DIR, ids: Sequence[str] | None = None) -> Corpus:
-    """Canonical Chongqing: WFDB at 1000 ADC units per millivolt, read by its header."""
+def load_acs(table: pd.DataFrame, ids: Sequence[str] | None = None) -> Corpus:
+    """Canonical Chongqing: the publisher's 1,000 units per millivolt, read back exactly."""
     n = len(table) if ids is None else len(ids)
-    return assemble_corpus("acs", iter_acs(table, root, ids), n)
+    return assemble_corpus("acs", iter_acs(table, ids), n)

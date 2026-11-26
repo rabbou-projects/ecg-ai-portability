@@ -71,16 +71,16 @@ NOT_REGENERABLE = {
     "baseline.json": "a 2 h 38 training run of the supervised baseline",
     "baseline/config.json": "written by that same training run",
     "baseline/metrics.json": "written by that same training run",
-    "external/acs.json": "a re-score of 17,955 tracings from the raw waveforms",
-    "external/sph.json": "a re-score of 25,770 tracings from the raw waveforms",
-    "ingest_report.json": "a full re-read of all three corpora, 40 minutes",
-    "seen_target.json": "needs the PhysioNet Challenge-2021 bundle, 21 GB, not in this repository",
+    "external/acs.json": "a re-score of 17,955 tracings read from the cardiodb store",
+    "external/sph.json": "a re-score of 25,770 tracings read from the cardiodb store",
+    "ingest_report.json": "a full re-read of all three corpora from the cardiodb store",
+    "seen_target.json": "needs the cardiodb store's Challenge-2021 partitions",
     # The rotation's tables. Each needs the five corpora on disk, so none of
     # them regenerates from what this repository carries. What guards them
     # against the drift this registry exists to catch is a different check:
     # test_rotation.py compares the split sizes the table recorded against the
     # ones the code draws now, which is the way they went stale in practice.
-    "label_map.json": "needs the Challenge-2021 bundle, PTB-XL and Shandong on disk",
+    "label_map.json": "needs the cardiodb store's Challenge-2021, PTB-XL and Shandong tables",
     "duplicate_groups.json": (
         "a full re-read of the five rotation corpora, 1,221 s by its own seconds field"
     ),
@@ -96,7 +96,7 @@ NOT_REGENERABLE = {
     "rotation_uncertainty.csv": (
         "the 1,624-row grid rotation_uncertainty.json summarises, written by the same run"
     ),
-    "target_scale.json": "needs PTB-XL and Chongqing on disk to draw the ladder's splits",
+    "target_scale.json": "needs PTB-XL and Chongqing from the cardiodb store for its splits",
     "rotation/chapman_ningbo/config.json": "written by a training run of that source",
     "rotation/chapman_ningbo/metrics.json": "written by that same training run",
     "rotation/cpsc/config.json": "written by a training run of that source",
@@ -148,7 +148,7 @@ NOT_REGENERABLE = {
     },
     "repairs.json": (
         "needs the EchoNext arms' per-record scores and the patient tables of PTB-XL, "
-        "Shandong and Chongqing on disk"
+        "Shandong and Chongqing from the cardiodb store"
     ),
     "ppv_repairs.json": (
         "needs the four EchoNext arms' per-record scores, which may not be committed, and "

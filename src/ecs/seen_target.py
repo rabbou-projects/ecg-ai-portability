@@ -23,7 +23,6 @@ from __future__ import annotations
 
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
-from pathlib import Path
 from typing import Any
 
 __all__ = [
@@ -35,7 +34,6 @@ __all__ = [
     "PartitionCount",
     "assess",
     "count_partition",
-    "dx_codes",
     "parse_dx_line",
 ]
 
@@ -144,10 +142,6 @@ def parse_dx_line(text: str) -> list[str]:
         if separator and key.strip().lower() == "dx":
             return [code.strip() for code in value.split(",") if code.strip()]
     return []
-
-
-def dx_codes(header: Path) -> list[str]:
-    return parse_dx_line(header.read_text(errors="replace"))
 
 
 def assess(counts: Mapping[str, PartitionCount], partitions: Sequence[str]) -> dict[str, Any]:
