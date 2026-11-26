@@ -2,7 +2,7 @@
 
 PTB-XL, SPH, ACS-ECG and the Challenge-2021 partitions are read here, from the
 store under ``CARDIODB_PROJECT`` (``cardiodb``'s README, "Reading tracings" and
-"Querying").  ``ecgdb`` runs in cardiodb's own environment, through
+"Querying").  ``cardiodb`` runs in its own environment, through
 ``cardiodb_bridge.py``: it is private and pins numpy 2, while this repository is
 public and pins numpy 1 for torch 2.2.2.
 
@@ -89,7 +89,7 @@ def table(name: str, corpus: str | None = None) -> pd.DataFrame:
 
 
 def query(sql: str, layers: Sequence[str] = ()) -> pd.DataFrame:
-    """``ecgdb query --with <layers>``: the tracings layer and the layers named."""
+    """``cardiodb query --with <layers>``: the tracings layer and the layers named."""
     request = {"op": "query", "sql": sql, "layers": list(layers)}
     return pd.read_parquet(io.BytesIO(_ask(request)))
 

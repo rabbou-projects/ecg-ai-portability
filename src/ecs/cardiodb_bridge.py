@@ -2,7 +2,7 @@
 
 ``ecs.store`` starts this file with cardiodb's interpreter (``uv run --project
 <cardiodb> --no-sync python -I``), writes one JSON request to its stdin and reads
-the answer from its stdout.  It imports ``ecgdb`` and nothing of this
+the answer from its stdout.  It imports ``cardiodb`` and nothing of this
 repository: cardiodb is private and pins numpy 2, this repository is public and
 pins numpy 1 for torch 2.2.2, so the two never share an interpreter.
 
@@ -13,7 +13,7 @@ Requests:
   the result as Parquet.
 - ``{"op": "tracings", "ids": [...]}``: for each id in order, a header of three
   little-endian int64 (samples, non-finite samples, clipped samples) and then the
-  ``(samples, 12)`` int16 microvolts ``ecgdb.loader.load_many`` reads at 500 Hz in
+  ``(samples, 12)`` int16 microvolts ``cardiodb.loader.load_many`` reads at 500 Hz in
   the canonical lead order.  An id the store does not hold stops the answer with
   the loader's error on stderr.
 """
@@ -40,9 +40,9 @@ def _parquet(frame: Any) -> bytes:
 def _tracings(ids: list[str], out: Any) -> None:
     import numpy as np
     import pandas as pd
-    from ecgdb.ingest import CANONICAL_LEADS
-    from ecgdb.loader import load_many
-    from ecgdb.store import Store, connect
+    from cardiodb.ingest import CANONICAL_LEADS
+    from cardiodb.loader import load_many
+    from cardiodb.store import Store, connect
 
     store = Store()
     connection = connect(store)
@@ -71,11 +71,11 @@ def main() -> None:
     out = sys.stdout.buffer
     op = request["op"]
     if op == "table":
-        from ecgdb.store import Store
+        from cardiodb.store import Store
 
         out.write(_parquet(Store().read(request["name"], request.get("corpus"))))
     elif op == "query":
-        from ecgdb.store import Store, connect
+        from cardiodb.store import Store, connect
 
         connection = connect(Store(), request.get("layers", []))
         out.write(_parquet(connection.execute(request["sql"]).fetch_df()))

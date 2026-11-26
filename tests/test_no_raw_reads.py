@@ -74,7 +74,7 @@ RAW_FOLDERS = frozenset(
 _CODE = "CODE-15% and CODE-test: the store holds their tables, not their tracings"
 _MIMIC = "MIMIC-IV-ECG: the store holds it at 250 Hz whole and at 500 Hz for a subset only"
 _ZZU = "ZZU pECG: the store holds it; the move needs its own before/after proof"
-_ECHONEXT = "EchoNext: restricted; ecgdb's own loader reads it in place under data/raw"
+_ECHONEXT = "EchoNext: restricted; cardiodb's own loader reads it in place under data/raw"
 NOT_YET_MOVED: dict[str, str] = {
     "src/ecs/config.py": f"{_CODE}; {_MIMIC}; {_ZZU}",
     "src/ecs/ingest.py": f"read_wfdb, for {_MIMIC} and {_ZZU}",
