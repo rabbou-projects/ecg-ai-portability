@@ -12,6 +12,7 @@ What the store changes, and how this module keeps the old reading:
   ACS-ECG and the Challenge partitions are WFDB at 1,000 units per millivolt, so
   ``microvolts / 1000`` is the float ``wfdb.rdrecord`` returned, bit for bit;
   SPH's float16 millivolts are rounded to the nearest microvolt (0.5 µV at most);
+- a record the store does not hold is excluded and counted, not a stop;
 - a non-finite sample is stored as 0 and counted (``waveform.n_nonfinite``), and a
   sample past int16 is clipped and counted (``n_clipped``).  Such a tracing comes
   back all NaN, so the chain excludes it as it excluded the publisher's record.
@@ -55,6 +56,7 @@ __all__ = [
 BRIDGE = Path(__file__).with_name("cardiodb_bridge.py")
 MICROVOLTS_PER_MILLIVOLT = 1000.0
 HEADER = struct.Struct("<qqq")
+NOT_HELD = -1  # the bridge's sample count for an id the store does not hold
 
 PTBXL_SOURCE = "physionet/ptb-xl"
 SPH_SOURCE = "figshare/sph"
@@ -103,8 +105,13 @@ def _read_exact(stream: IO[bytes], n: int) -> bytes:
 
 def tracings(
     record_ids: Sequence[str], project: Path = CARDIODB_PROJECT
-) -> Iterator[tuple[str, Record]]:
-    """Each store record as a ``Record``: (12, T) float32 millivolts at 500 Hz."""
+) -> Iterator[tuple[str, Record | LookupError]]:
+    """Each store record as a ``Record``: (12, T) float32 millivolts at 500 Hz.
+
+    An id the store does not hold comes back as a ``LookupError`` in its place, and
+    the stream goes on: the chain excludes it as "unreadable" and counts it, as it
+    did a publisher's file that would not open.
+    """
     ids = list(record_ids)
     with subprocess.Popen(
         _command(project), stdin=subprocess.PIPE, stdout=subprocess.PIPE, stderr=subprocess.PIPE
@@ -115,6 +122,12 @@ def tracings(
         try:
             for record_id in ids:
                 n, nonfinite, clipped = HEADER.unpack(_read_exact(child.stdout, HEADER.size))
+                if n == NOT_HELD:
+                    yield (
+                        record_id,
+                        LookupError(f"not in the cardiodb store at 500 Hz: {record_id}"),
+                    )
+                    continue
                 raw = _read_exact(child.stdout, n * N_LEADS * 2)
                 microvolts = np.frombuffer(raw, dtype="<i2").reshape(n, N_LEADS)
                 signal = (microvolts / MICROVOLTS_PER_MILLIVOLT).T.astype(np.float32)

@@ -238,6 +238,22 @@ class TestPTBXL:
             ),
         )
 
+    def test_a_record_the_store_lacks_is_excluded_and_the_pass_goes_on(self) -> None:
+        """One id the store does not hold once stopped a whole pass; the raw reader
+        excluded an unopenable file and went on, and so must the store read."""
+        wanted = [
+            "physionet/ptb-xl:00001_hr",
+            "physionet/ptb-xl:no_such_hr",
+            "physionet/ptb-xl:00002_hr",
+        ]
+        corpus = assemble_corpus("ptbxl", store.tracings(wanted), 3)
+        assert corpus.ids == ["physionet/ptb-xl:00001_hr", "physionet/ptb-xl:00002_hr"]
+        assert corpus.excluded == {
+            "physionet/ptb-xl:no_such_hr": (
+                "unreadable: not in the cardiodb store at 500 Hz: physionet/ptb-xl:no_such_hr"
+            )
+        }
+
 
 @pytest.mark.data
 @needs_store

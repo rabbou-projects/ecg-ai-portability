@@ -14,8 +14,9 @@ Requests:
 - ``{"op": "tracings", "ids": [...]}``: for each id in order, a header of three
   little-endian int64 (samples, non-finite samples, clipped samples) and then the
   ``(samples, 12)`` int16 microvolts ``cardiodb.loader.load_many`` reads at 500 Hz in
-  the canonical lead order.  An id the store does not hold stops the answer with
-  the loader's error on stderr.
+  the canonical lead order.  An id the store does not hold at 500 Hz gets the
+  header ``(NOT_HELD, 0, 0)`` and no samples, and the answer goes on, as the
+  publisher's reader went on past a file it could not open.
 """
 
 from __future__ import annotations
@@ -29,6 +30,7 @@ from typing import Any
 MICROVOLTS_PER_MILLIVOLT = 1000
 RATE_HZ = 500
 CHUNK = 5000  # ids registered per waveform-index query
+NOT_HELD = -1  # the sample count written for an id the store does not hold
 
 
 def _parquet(frame: Any) -> bytes:
@@ -57,11 +59,18 @@ def _tracings(ids: list[str], out: Any) -> None:
             ).fetchall()
         }
         connection.unregister("wanted")
-        for tracing in load_many(chunk, RATE_HZ, list(CANONICAL_LEADS), store):
-            if tracing.held_rate_hz != RATE_HZ:
-                raise LookupError(f"{tracing.record_id}: held at {tracing.held_rate_hz:g} Hz only")
+        held = iter(
+            load_many([i for i in chunk if i in counts], RATE_HZ, list(CANONICAL_LEADS), store)
+        )
+        for record_id in chunk:
+            if record_id not in counts:
+                out.write(struct.pack("<qqq", NOT_HELD, 0, 0))
+                continue
+            tracing = next(held)
+            if tracing.record_id != record_id or tracing.held_rate_hz != RATE_HZ:
+                raise LookupError(f"{record_id}: the loader answered {tracing.record_id}")
             microvolts = np.rint(tracing.signal * MICROVOLTS_PER_MILLIVOLT).astype("<i2")
-            nonfinite, clipped = counts[tracing.record_id]
+            nonfinite, clipped = counts[record_id]
             out.write(struct.pack("<qqq", microvolts.shape[0], nonfinite, clipped))
             out.write(np.ascontiguousarray(microvolts).tobytes())
 
