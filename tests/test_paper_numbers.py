@@ -121,7 +121,6 @@ CONSTANTS = {
     "2024": "part of Chongqing's approval number, 2024-256-01",
     "256": "part of Chongqing's approval number, 2024-256-01",
     "01": "part of Chongqing's approval number, 2024-256-01",
-    "6.6": "the size of ptbxl_database.csv in MB",
     "8700": "the CPU the timings were taken on, an i7-8700",
     "28": "the minutes the full suite took on a cold clone",
     "2012": "Vovk's ACML year in the README's sources",
