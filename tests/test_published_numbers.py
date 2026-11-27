@@ -23,10 +23,10 @@ import math
 from collections.abc import Callable
 
 import numpy as np
-import pandas as pd
 import pytest
 
-from ecs.config import PTBXL_DIR, RESULTS_DIR
+from ecs import store
+from ecs.config import RESULTS_DIR
 
 ALPHA = 0.10
 DRAWS = 200
@@ -98,7 +98,7 @@ def _recompute(halves: Callable[..., list[np.ndarray]]) -> dict[tuple, float]:
         "sph": dict(np.load(RESULTS_DIR / "external/sph.npz", allow_pickle=False)),
         "acs": dict(np.load(RESULTS_DIR / "external/acs.npz", allow_pickle=False)),
     }
-    database = pd.read_csv(PTBXL_DIR / "ptbxl_database.csv", index_col="ecg_id")
+    database = store.ptbxl_database()
     patients = np.array([str(database.loc[int(i), "patient_id"]) for i in corpora["ptbxl"]["ids"]])
 
     tally: dict[tuple, list[float]] = {}
@@ -269,7 +269,7 @@ def _subgroup_masks(ids: np.ndarray) -> dict[str, np.ndarray]:
     from the dataset's own changelog rather than imported, so that changing them
     in ``scripts/subgroups.py`` cannot quietly move the expectation.
     """
-    database = pd.read_csv(PTBXL_DIR / "ptbxl_database.csv", index_col="ecg_id")
+    database = store.ptbxl_database()
     rows = database.loc[[int(i) for i in ids]]
     age, sex = rows["age"].to_numpy(), rows["sex"].to_numpy()
     masks = {"sex:male": sex == 0, "sex:female": sex == 1}
@@ -287,7 +287,7 @@ def _subgroup_masks(ids: np.ndarray) -> dict[str, np.ndarray]:
 def recomputed_subgroups() -> dict[str, float]:
     """Coverage in every subgroup cell, over the same 200 halves as outcomes.py."""
     bundle = dict(np.load(RESULTS_DIR / "baseline/scores.npz", allow_pickle=False))
-    database = pd.read_csv(PTBXL_DIR / "ptbxl_database.csv", index_col="ecg_id")
+    database = store.ptbxl_database()
     patients = np.array([str(database.loc[int(i), "patient_id"]) for i in bundle["ids"]])
     masks = _subgroup_masks(bundle["ids"])
 

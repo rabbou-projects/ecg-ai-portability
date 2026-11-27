@@ -68,15 +68,15 @@
     }
   },
   "provenance": {
-    "commit": "e6ae324342e32ec315af2e7e90d3088bd8ef9285",
+    "commit": "d719ae00edb302136b03a558e9d7b4583f9afe2e",
     "producers": {
       "results/baseline/scores.npz": "ba5c637ab63001d60a1678dc34efdeeaefef13c57de5bbb41e000a781ce43482",
       "results/external/acs.npz": "94a2069dccd60b19564e46c53cfae8e1a68593d6c21b869d461bbee2835875d7",
       "results/external/sph.npz": "1702b2b7dfad09a10eca7ddd607b580456fcdd184b56a37a35a350f26e58bea5",
-      "results/outcomes.json": "61a9377eee03bf91941baf584386908a853de8652bdad58dbca5fcd955dbec43",
+      "results/outcomes.json": "2460b08ef0b5d45840c5cd9821a1fe6705a991f8ea64cf1153e9676f797f2359",
       "scripts/infarction_sites.py": "a60a4ed0f959f6e16bd49851300edde55b3f028a9510a6742ca73effff8d97d7",
       "src/ecs/transfer.py": "e690339b52941e150a61527ac5e0e56a3cc5dbcd5772f7ba06ec8296b112d624"
     }
   },
-  "seconds": 4.5
+  "seconds": 11.5
 }

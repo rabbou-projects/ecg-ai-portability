@@ -63,18 +63,16 @@ from numpy.typing import NDArray
 
 from ecs.arms import auprc, auroc, fit_probe, paired_difference
 from ecs.config import (
-    ACS_DIR,
     ACS_LABELLED_SPLIT,
     EMBEDDINGS_DIR,
-    PTBXL_DIR,
     RESULTS_DIR,
-    SPH_DIR,
 )
 from ecs.encoders import PRETRAINING, SAW
 from ecs.labels import MILabelSpec, acs_mi_label, ptbxl_mi_label, sph_mi_label
 from ecs.metrics import bootstrap_ci
 from ecs.report import Source, Target, frozen_calibration_table
 from ecs.splits import ptbxl_benchmark_split
+from ecs.store import acs_table, ptbxl_database, scp_statements, sph_metadata
 
 # The arms, in the order the grid reads: the control first, then the arms that
 # saw nothing public, then the ones that saw the calibration corpus, then the
@@ -133,18 +131,18 @@ def aligned(
 def corpus_labels() -> dict[str, pd.Series]:
     """One boolean infarction label per record, per corpus, indexed by record id."""
     spec = MILabelSpec()
-    database = pd.read_csv(PTBXL_DIR / "ptbxl_database.csv", index_col="ecg_id")
-    statements = pd.read_csv(PTBXL_DIR / "scp_statements.csv", index_col=0)
+    database = ptbxl_database()
+    statements = scp_statements()
     ptbxl = ptbxl_mi_label(database, statements, spec)
     ptbxl.index = ptbxl.index.astype(str)
 
-    metadata = pd.read_csv(SPH_DIR / "metadata.csv")
+    metadata = sph_metadata()
     sph = sph_mi_label(metadata, spec)
     sph.index = metadata["ECG_ID"].astype(str)
 
-    acs_table = pd.read_csv(ACS_DIR / ACS_LABELLED_SPLIT)
-    acs = acs_mi_label(acs_table, spec)
-    acs.index = pd.Index([str(f).removesuffix(".dat") for f in acs_table["ecg_row_record"]])
+    acs_rows = acs_table(ACS_LABELLED_SPLIT)
+    acs = acs_mi_label(acs_rows, spec)
+    acs.index = pd.Index([str(f).removesuffix(".dat") for f in acs_rows["ecg_row_record"]])
     return {"ptbxl": ptbxl, "sph": sph, "acs": acs}
 
 
@@ -158,13 +156,13 @@ def target_patients(corpus: str) -> int:
     suggest and writing the larger number would say otherwise.
     """
     if corpus == "sph":
-        return int(pd.read_csv(SPH_DIR / "metadata.csv")["Patient_ID"].nunique())
-    return int(pd.read_csv(ACS_DIR / ACS_LABELLED_SPLIT)["Patient_id"].nunique())
+        return int(sph_metadata()["Patient_ID"].nunique())
+    return int(acs_table(ACS_LABELLED_SPLIT)["Patient_id"].nunique())
 
 
 def ptbxl_parts() -> tuple[pd.Series, pd.Series]:
     """Which PTB-XL fold each record is in, and which patient it belongs to."""
-    database = pd.read_csv(PTBXL_DIR / "ptbxl_database.csv", index_col="ecg_id")
+    database = ptbxl_database()
     part = ptbxl_benchmark_split(database)
     part.index = part.index.astype(str)
     patients = database["patient_id"].astype(str)

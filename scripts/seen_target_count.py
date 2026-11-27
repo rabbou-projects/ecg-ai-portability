@@ -27,7 +27,9 @@ SNOMED code, how many records of each partition carry it.  Reproducing those
 columns from the headers is the oracle -- a parse that disagrees with the
 published table is wrong, whatever it reports.
 
-Usage: .venv/bin/python scripts/seen_target_count.py --bundle ~/data/challenge2021
+Usage: .venv/bin/python scripts/seen_target_count.py
+
+The ``# Dx:`` lines are read from cardiodb's store (``ecs.store.challenge_source``).
 """
 
 from __future__ import annotations
@@ -37,11 +39,11 @@ import json
 import subprocess
 import sys
 from collections import Counter
-from collections.abc import Iterator, Sequence
+from collections.abc import Sequence
 from pathlib import Path
 from typing import Any
 
-from ecs.config import CHALLENGE2021_DIR, RESULTS_DIR
+from ecs.config import RESULTS_DIR
 from ecs.seen_target import (
     ALLOWED_PARTITIONS,
     INFARCTION_CODES,
@@ -51,8 +53,8 @@ from ecs.seen_target import (
     PartitionCount,
     assess,
     count_partition,
-    dx_codes,
 )
+from ecs.store import CHALLENGE_SOURCE, challenge_source
 
 __all__ = ["main"]
 
@@ -62,28 +64,17 @@ def git_commit() -> str:
     return out.stdout.strip() or "unknown"
 
 
-def iter_headers(root: Path) -> Iterator[Path]:
-    yield from sorted(root.rglob("*.hea"))
-
-
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser()
-    parser.add_argument(
-        "--bundle",
-        default=str(CHALLENGE2021_DIR),
-        help="the Challenge-2021 root, the directory holding training/",
-    )
     parser.add_argument("--out", default=str(RESULTS_DIR / "seen_target.json"))
     args = parser.parse_args(argv)
 
-    training = Path(args.bundle).expanduser() / "training"
     counts: dict[str, PartitionCount] = {}
     per_code: dict[str, Counter[str]] = {}
     for name in ALLOWED_PARTITIONS:
-        directory = training / name
-        if not directory.is_dir():
-            raise SystemExit(f"{directory} is not there; is --bundle the Challenge-2021 root?")
-        records = [dx_codes(path) for path in iter_headers(directory)]
+        records = [list(dx) for dx in challenge_source(name)["dx"]]
+        if not records:
+            raise SystemExit(f"cardiodb's store holds no record of {name}")
         counts[name] = count_partition(records)
         tally: Counter[str] = Counter()
         for codes in records:
@@ -93,7 +84,7 @@ def main(argv: Sequence[str] | None = None) -> int:
 
     named = [p for p in ALLOWED_PARTITIONS if p != "cpsc_2018_extra"]
     result: dict[str, Any] = {
-        "bundle": str(Path(args.bundle).expanduser()),
+        "bundle": f"cardiodb store, {CHALLENGE_SOURCE}/<partition>",
         "git_commit": git_commit(),
         "partitions_read": list(ALLOWED_PARTITIONS),
         "partitions_refused": {

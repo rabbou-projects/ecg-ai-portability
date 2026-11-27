@@ -22,7 +22,7 @@ The source rotation adds four corpora from the PhysioNet/CinC Challenge-2021 col
 | Georgia | United States | 10,344 | source and target |
 | CPSC 2018 and its extension | China | 10,330 | source and target |
 
-`scripts/fetch_open_corpora.sh` downloads ACS-ECG and the four PhysioNet corpora, and holds the figshare file ids and MD5 sums of the three Chongqing archives. Shandong, Chongqing and PTB-XL take 7.3 GB on disk, and the four PhysioNet corpora roughly 21 GB more. The script does not fetch PTB-XL or Shandong. PTB-XL is downloaded from PhysioNet and read in place from `$ECS_PTBXL_DIR`; Shandong is downloaded from its figshare record and unpacked under `data/sph`.
+`scripts/fetch_open_corpora.sh` downloads ACS-ECG and the four PhysioNet corpora, and holds the figshare file ids and MD5 sums of the three Chongqing archives. Shandong, Chongqing and PTB-XL take 7.3 GB on disk, and the four PhysioNet corpora roughly 21 GB more. The script does not fetch PTB-XL or Shandong. This repository reads none of these files: PTB-XL, Shandong, ACS-ECG and the Challenge-2021 partitions are read from the cardiodb store through `src/ecs/store.py`, which keeps each tracing as int16 microvolts at 500 Hz. That is the publishers' own samples for the WFDB corpora, and Shandong's float16 millivolts rounded to the microvolt (0.5 µV at most).
 
 ## File formats and ingestion
 
@@ -30,7 +30,8 @@ Contents recorded from the distributed files on 2026-08-23.
 
 | | PTB-XL | SPH (Shandong) | ACS-ECG (Chongqing) |
 |---|---|---|---|
-| Where | `$ECS_PTBXL_DIR/records500/` | `data/sph/records/*.h5` | `data/acs/row_data/*.{dat,hea}` |
+| As shipped | `records500/` | `records/*.h5` | `row_data/*.{dat,hea}` |
+| Read from | cardiodb `physionet/ptb-xl` | cardiodb `figshare/sph` | cardiodb `figshare/acs` |
 | Format | WFDB, format 16 (int16), `.hea` header | HDF5, one dataset `ecg`, float16, no attributes | WFDB, format 16 (int16), `.hea` header |
 | Rate, length | 500 Hz, 5000 samples | 500 Hz, 5000–28,000 samples in steps of 500 (18,842 of 25,770 exactly 5000) | 500 Hz, 5000 samples |
 | Amplitude | 1000 ADC units per mV, baseline 0 (header) | mV, stored as float16 (paper: 24-bit ADC, "16-bit precision") | 1000 ADC units per mV, baseline 0 (header) |

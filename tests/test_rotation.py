@@ -29,7 +29,8 @@ from typing import Any
 import numpy as np
 import pytest
 
-from ecs.config import CHALLENGE2021_DIR, PTBXL_DIR, RESULTS_DIR
+from ecs import store
+from ecs.config import RESULTS_DIR
 from ecs.ingest import CANONICAL_LEADS
 from ecs.report import CORRECTIONS, Source, Target, frozen_calibration_table
 from ecs.rotation import (
@@ -50,12 +51,10 @@ ROTATION = Path(RESULTS_DIR) / "rotation.json"
 GRID = Path(RESULTS_DIR) / "rotation.csv"
 
 
-# The split and the ingestion read the Challenge-2021 bundle and PTB-XL's database
-# file; a clone without them skips those tests instead of failing on a missing path.
-CORPORA_ON_DISK = (CHALLENGE2021_DIR / "training").is_dir() and (
-    PTBXL_DIR / "ptbxl_database.csv"
-).is_file()
-NOT_ON_DISK = "the Challenge-2021 bundle or PTB-XL's database file is not on disk"
+# The split and the ingestion read cardiodb's store; a clone without it skips those
+# tests instead of failing on a missing checkout.
+CORPORA_ON_DISK = store.available()
+NOT_ON_DISK = "cardiodb's store is not here"
 needs_corpora = pytest.mark.skipif(not CORPORA_ON_DISK, reason=NOT_ON_DISK)
 
 

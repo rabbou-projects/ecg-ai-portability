@@ -18,8 +18,9 @@ from collections.abc import Callable, Sequence
 import numpy as np
 import pandas as pd
 
-from ecs.config import ACS_DIR, N_LEADS, PTBXL_DIR, RESULTS_DIR, SPH_DIR, WINDOW_SAMPLES
+from ecs.config import N_LEADS, RESULTS_DIR, WINDOW_SAMPLES
 from ecs.ingest import Corpus, load_acs, load_ptbxl, load_sph
+from ecs.store import acs_table, ptbxl_database, sph_metadata
 
 CHUNK = 1000
 
@@ -50,10 +51,10 @@ def scan(
 
 
 def main() -> int:
-    database = pd.read_csv(PTBXL_DIR / "ptbxl_database.csv", index_col="ecg_id")
-    metadata = pd.read_csv(SPH_DIR / "metadata.csv")
-    train = pd.read_csv(ACS_DIR / "CSV/train.csv")
-    test = pd.read_csv(ACS_DIR / "CSV/test.csv")
+    database = ptbxl_database()
+    metadata = sph_metadata()
+    train = acs_table("train")
+    test = acs_table("test")
     acs_ids = [str(f).removesuffix(".dat") for f in pd.concat([train, test])["ecg_row_record"]]
     out = {
         "ptbxl": scan(

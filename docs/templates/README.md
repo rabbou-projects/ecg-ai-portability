@@ -35,7 +35,7 @@ EchoNext is under PhysioNet's restricted licence, so no tracing and no per-recor
 
 ## Reproduce
 
-Every number and figure the article prints is redrawn from the files committed here, so no raw tracing is needed for the infarction study. `outcomes.py` and `subgroups.py` need PTB-XL's `ptbxl_database.csv` (6.6 MB from PhysioNet), which holds each record's patient, sex and age; point `ECS_PTBXL_DIR` at the directory holding it. The EchoNext results need the EchoNext distribution and the stored per-record scores; [SUPPLEMENT.md](SUPPLEMENT.md) gives those commands.
+Every number and figure the article prints is redrawn from the files committed here, so no raw tracing is needed for the infarction study. `outcomes.py` and `subgroups.py` need PTB-XL's database table, which holds each record's patient, sex and age; every corpus is read from the cardiodb store (`src/ecs/store.py`), never from a publisher's files, and `ECS_CARDIODB_PROJECT` names the cardiodb checkout when it is not beside this one. The EchoNext results need the EchoNext distribution and the stored per-record scores; [SUPPLEMENT.md](SUPPLEMENT.md) gives those commands.
 
 ```bash
 uv sync                                  # 1 min
@@ -44,7 +44,7 @@ uv run python tests/paper_render.py      # checks REPORT.md, SUPPLEMENT.md, READ
 uv run python scripts/figures.py         # redraws the infarction and rotation figures, 5 s
 uv run python scripts/paper_figures.py   # redraws Figures 2, 3 and 4 from results/echonext_clinical.json
 uv run python scripts/infarction_sites.py  # rebuilds results/infarction_sites.json, 2 s
-export ECS_PTBXL_DIR=/path/to/ptbxl      # the directory with ptbxl_database.csv
+export ECS_CARDIODB_PROJECT=/path/to/cardiodb  # the cardiodb checkout holding the store
 uv run python scripts/outcomes.py        # rebuilds results/outcomes.json, 3 s
 uv run python scripts/subgroups.py       # rebuilds results/subgroups.json, 23 s
 uv run python scripts/ppv_gap.py         # rebuilds results/ppv_gap.json, 2 s

@@ -24,18 +24,18 @@ import traceback
 from pathlib import Path
 
 import numpy as np
-import pandas as pd
 import torch
 
-from ecs.config import PTBXL_DIR, RESULTS_DIR
+from ecs.config import RESULTS_DIR
 from ecs.encoders import ARMS, PRETRAINING, WEIGHTS, machine_info
 from ecs.ingest import load_ptbxl
+from ecs.store import ptbxl_database
 
 BATCH = 20
 
 
 def records(n: int) -> np.ndarray:
-    database = pd.read_csv(PTBXL_DIR / "ptbxl_database.csv", index_col="ecg_id")
+    database = ptbxl_database()
     return load_ptbxl(database, ids=list(database.index[:n])).x
 
 

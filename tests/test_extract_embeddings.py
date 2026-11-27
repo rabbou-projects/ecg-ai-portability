@@ -13,43 +13,30 @@ from __future__ import annotations
 import io
 import json
 import re
-from collections.abc import Callable, Sequence
+from collections.abc import Callable, Iterator, Sequence
 from dataclasses import dataclass
 from pathlib import Path
 
 import extract_embeddings as ee
 import numpy as np
-import pandas as pd
 import pytest
 import torch
-import wfdb
 
-from ecs.ingest import CANONICAL_LEADS, Corpus, load_acs
+from ecs.ingest import CANONICAL_LEADS, Corpus, Record, assemble_corpus
 
 N_RECORDS = 40
 MISSING_ID = "99999"
 
 
-def _write_records(root: Path, n: int) -> list[str]:
-    """``n`` flat WFDB records; record k sits at (k + 1) / 1000 mV in every lead."""
-    directory = root / "row_data"
-    directory.mkdir(parents=True)
-    ids = []
-    for k in range(n):
-        name = f"{k:05d}"
-        wfdb.wrsamp(
-            name,
-            fs=500,
-            units=["mV"] * 12,
-            sig_name=list(CANONICAL_LEADS),
-            d_signal=np.full((5000, 12), k + 1, dtype=np.int16),
-            fmt=["16"] * 12,
-            adc_gain=[1000.0] * 12,
-            baseline=[0] * 12,
-            write_dir=str(directory),
-        )
-        ids.append(name)
-    return ids
+def _records(ids: Sequence[str]) -> Iterator[tuple[str, Record | Exception]]:
+    """Flat tracings: record k sits at (k + 1) / 1000 mV in every lead; MISSING_ID
+    is a record its reader could not load."""
+    for name in ids:
+        if name == MISSING_ID:
+            yield name, FileNotFoundError(f"{name}: no such record")
+            continue
+        level = np.float32((int(name) + 1) / 1000)
+        yield name, Record(np.full((12, 5000), level, dtype=np.float32), CANONICAL_LEADS, 500)
 
 
 class _StubArm:
@@ -84,15 +71,14 @@ class Fixture:
 
 @pytest.fixture
 def corpus(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Fixture:
-    ids = _write_records(tmp_path, N_RECORDS) + [MISSING_ID]
-    table = pd.DataFrame({"ecg_row_record": [f"{i}.dat" for i in ids]})
+    ids = [f"{k:05d}" for k in range(N_RECORDS)] + [MISSING_ID]
     stub = _StubArm()
     monkeypatch.setitem(ee.ARMS, "stub", stub)
     monkeypatch.setitem(ee.PRETRAINING, "stub", "none")
     monkeypatch.setattr(ee, "CHUNK", 10)
 
     def load(wanted: Sequence[str]) -> Corpus:
-        return load_acs(table, root=tmp_path, ids=list(wanted))
+        return assemble_corpus("acs", _records(list(wanted)), len(wanted))
 
     return Fixture(ids, load, stub, tmp_path / "embeddings")
 

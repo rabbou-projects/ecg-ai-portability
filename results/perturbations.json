@@ -13,12 +13,12 @@
     "passed": true
   },
   "provenance": {
-    "commit": "0189b865c34b070570281db70ccb41bd9e3c18e5",
+    "commit": "39937852f0dbe5c1357844542f9a198c7e520f09",
     "producers": {
-      "scripts/perturbations.py": "f099000142db6a185fc652ac8072676cb920286cc4dcde2d0f591aced4169ecb",
-      "scripts/score_external.py": "4ee99a952debb3302eba58439f7b76883d56420edec911929ae530f48ff7d384",
+      "scripts/perturbations.py": "b1e23227a9dd69e0458c11ecfbf4c583fea272adfe158ff7896c207285501105",
+      "scripts/score_external.py": "c276222c4ceda1585e201d387e04e94fc759e4988cb72852cd8215011a7d9770",
       "src/ecs/conformal.py": "c434998b704a551d55bc2206a1a3ada6d42309947b0b92db11607746dcd068dc",
-      "src/ecs/ingest.py": "5327f33c672dc4e5c2cc5a6223ca08b60dd663d8061ea50aff620338537f9f74",
+      "src/ecs/ingest.py": "8bcd084355b0439b230e9683b90cbb3d399c5c7552fa846aa67b52a7800e9feb",
       "src/ecs/labels.py": "c6160e7781de27bda116d8c9b09a518340d1e2f84d95ca13ee26679e78b9a965",
       "src/ecs/models.py": "998bc0a636b4f2aaff97ad5cad704036ae45644b2cfa979187275a590e4d1048",
       "src/ecs/splits.py": "17f1d2fea5970c37b989ad0df925b3d19f355012bfca02aed6983ce142b5a946"

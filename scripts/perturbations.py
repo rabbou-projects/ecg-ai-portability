@@ -45,14 +45,13 @@ from pathlib import Path
 from typing import Any
 
 import numpy as np
-import pandas as pd
 import torch
 from numpy.typing import NDArray
 from scipy.stats import kendalltau
 from score_external import load_model, probabilities
 from sklearn.metrics import roc_auc_score
 
-from ecs.config import PTBXL_DIR, RESULTS_DIR, SAMPLING_RATE_HZ
+from ecs.config import RESULTS_DIR, SAMPLING_RATE_HZ
 from ecs.conformal import (
     conformal_quantile,
     lac_scores,
@@ -65,6 +64,7 @@ from ecs.ingest import load_ptbxl
 from ecs.labels import MILabelSpec, ptbxl_mi_label
 from ecs.provenance import provenance_block
 from ecs.splits import ptbxl_benchmark_split
+from ecs.store import ptbxl_database, scp_statements
 
 ALPHA = 0.10
 PLAIN_SENSITIVITY = 1.0 - ALPHA
@@ -130,19 +130,17 @@ DESCRIPTIONS = {
 }
 
 
-def read_fold_ten(
-    root: Path,
-) -> tuple[NDArray[np.float32], NDArray[np.int_], NDArray[Any], list[str]]:
+def read_fold_ten() -> tuple[NDArray[np.float32], NDArray[np.int_], NDArray[Any], list[str]]:
     """Fold 10's tracings, labels, patients and identifiers, in the scored order."""
-    database = pd.read_csv(root / "ptbxl_database.csv", index_col="ecg_id")
-    statements = pd.read_csv(root / "scp_statements.csv", index_col=0)
+    database = ptbxl_database()
+    statements = scp_statements()
     labels = ptbxl_mi_label(database, statements, MILabelSpec())
     wanted = ptbxl_benchmark_split(database).pipe(lambda s: s.index[s == "test"])
 
     ids: list[str] = []
     blocks: list[NDArray[np.float32]] = []
     for start in range(0, len(wanted), CHUNK):
-        chunk = load_ptbxl(database, root=root, ids=[int(i) for i in wanted[start : start + CHUNK]])
+        chunk = load_ptbxl(database, ids=[int(i) for i in wanted[start : start + CHUNK]])
         ids.extend(chunk.ids)
         blocks.append(chunk.x)
         print(f"  read {len(ids):>6} / {len(wanted)}", flush=True)
@@ -250,12 +248,12 @@ def measure(
 
 
 def build(
-    draws: int, seed: int, root: Path, checkpoint: Path, threads: int
+    draws: int, seed: int, checkpoint: Path, threads: int
 ) -> tuple[dict[str, Any], dict[str, NDArray[Any]]]:
     started = time.time()
     torch.set_num_threads(threads)
     model, centre, scale = load_model(checkpoint)
-    x, labels, patients, ids = read_fold_ten(root)
+    x, labels, patients, ids = read_fold_ten()
 
     scored: dict[str, NDArray[np.float64]] = {}
     for name, transform in CONDITIONS.items():
@@ -319,12 +317,11 @@ def main() -> None:
     parser.add_argument("--draws", type=int, default=DRAWS)
     parser.add_argument("--seed", type=int, default=0)
     parser.add_argument("--threads", type=int, default=4)
-    parser.add_argument("--ptbxl-dir", type=Path, default=PTBXL_DIR)
     parser.add_argument("--checkpoint", type=Path, default=RESULTS_DIR / "baseline/model.pt")
     parser.add_argument("--out", type=Path, default=RESULTS_DIR / "perturbations.json")
     parser.add_argument("--scores-out", type=Path, default=RESULTS_DIR / "perturbations.npz")
     args = parser.parse_args()
-    table, scores = build(args.draws, args.seed, args.ptbxl_dir, args.checkpoint, args.threads)
+    table, scores = build(args.draws, args.seed, args.checkpoint, args.threads)
     args.out.write_text(json.dumps(table, indent=2) + "\n")
     # The checkpoint and the raw tracings are not in the repository, so the
     # scores go in beside the table: everything below the model is then

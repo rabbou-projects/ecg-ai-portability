@@ -24,25 +24,23 @@ the intersection and reports what fell out on either side.
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from pathlib import Path
 
 import numpy as np
 import pandas as pd
 
-from .config import CHALLENGE2021_DIR, MAPPINGS_DIR
+from .config import MAPPINGS_DIR
 from .small_set import SMALL_SET, aha_codes_for, refusals, snomed_codes_for
+from .store import challenge_source, distributed_headers
 
 __all__ = [
     "CHALLENGE_PARTITIONS",
     "completeness",
     "distributed_records",
     "PTBXL_RECORD_PREFIX",
-    "Header",
     "challenge_small_set_labels",
     "join_ptbxl_to_challenge",
     "partition_deviations",
-    "read_header",
     "scan_source",
     "sph_small_set_labels",
 ]
@@ -67,110 +65,70 @@ NO_PATIENT_KEY = (
 )
 
 
-@dataclass(frozen=True)
-class Header:
-    """What one ``.hea`` says: the record, its shape, and its diagnoses."""
+def scan_source(source: str) -> pd.DataFrame:
+    """Every record of one rotation source, indexed by the header's record name.
 
-    record_id: str
-    path: Path
-    dx: tuple[str, ...]
-    sampling_rate_hz: int
-    n_samples: int
-    age: float
-    sex: str
-
-
-def read_header(path: Path) -> Header:
-    """Parse one Challenge header without touching its samples."""
-    lines = path.read_text(errors="replace").splitlines()
-    if not lines:
-        raise ValueError(f"{path}: empty header")
-    fields = lines[0].split()
-    if len(fields) < 4:
-        raise ValueError(f"{path}: first line is not a WFDB record line: {lines[0]!r}")
-    dx: tuple[str, ...] = ()
-    age = float("nan")
-    sex = "Unknown"
-    for line in lines:
-        if line.startswith("# Dx:"):
-            dx = tuple(c.strip() for c in line.removeprefix("# Dx:").split(",") if c.strip())
-        elif line.startswith("# Age:"):
-            raw = line.removeprefix("# Age:").strip()
-            age = float(raw) if raw.replace(".", "", 1).isdigit() else float("nan")
-        elif line.startswith("# Sex:"):
-            sex = line.removeprefix("# Sex:").strip()
-    return Header(
-        record_id=fields[0],
-        path=path.with_suffix(""),
-        dx=dx,
-        sampling_rate_hz=int(fields[2]),
-        n_samples=int(fields[3]),
-        age=age,
-        sex=sex,
-    )
-
-
-def scan_source(source: str, root: Path = CHALLENGE2021_DIR) -> pd.DataFrame:
-    """Every record of one rotation source, indexed by record id.
-
-    Columns: ``partition``, ``path`` (without extension), ``dx`` (a tuple of
-    SNOMED CT codes), ``sampling_rate_hz``, ``n_samples``, ``age``, ``sex``.
+    Columns: ``partition``, ``path`` (the record's id in cardiodb's store), ``dx``
+    (a tuple of SNOMED CT codes, as the ``# Dx:`` line lists them),
+    ``sampling_rate_hz``, ``n_samples``, ``age``, ``sex``; in the bundle's path
+    order within each partition.
     """
-    rows: list[dict[str, object]] = []
+    frames = []
     for partition in CHALLENGE_PARTITIONS[source]:
-        directory = root / "training" / partition
-        if not directory.is_dir():
-            raise FileNotFoundError(f"{directory} is not on disk")
-        for header_path in sorted(directory.rglob("*.hea")):
-            header = read_header(header_path)
-            rows.append(
+        held = challenge_source(partition)
+        if not len(held):
+            raise FileNotFoundError(f"cardiodb's store holds no record of {partition}")
+        frames.append(
+            pd.DataFrame(
                 {
-                    "record_id": header.record_id,
                     "partition": partition,
-                    "path": header.path,
-                    "dx": header.dx,
-                    "sampling_rate_hz": header.sampling_rate_hz,
-                    "n_samples": header.n_samples,
-                    "age": header.age,
-                    "sex": header.sex,
-                }
+                    "path": held["store_id"].to_numpy(),
+                    "dx": held["dx"].to_numpy(),
+                    "sampling_rate_hz": held["sampling_rate_hz"].astype(int).to_numpy(),
+                    "n_samples": held["n_samples"].astype(int).to_numpy(),
+                    "age": [_age(a) for a in held["age"]],
+                    "sex": held["sex"].fillna("Unknown").to_numpy(),
+                },
+                index=pd.Index(held["record_id"], name="record_id"),
             )
-    table = pd.DataFrame(rows).set_index("record_id")
+        )
+    table = pd.concat(frames)
     if table.index.has_duplicates:
         duplicates = sorted(table.index[table.index.duplicated()].unique())
         raise ValueError(f"{source}: repeated record ids {duplicates[:5]}")
     return table
 
 
-def distributed_records(partition: str, root: Path = CHALLENGE2021_DIR) -> set[str]:
+def _age(stated: object) -> float:
+    """The header's ``# Age:`` as years, or NaN: CPSC's ``-1`` and ``NaN`` are no age."""
+    text = "" if stated is None or stated is pd.NA else str(stated).strip()
+    return float(text) if text.replace(".", "", 1).isdigit() else float("nan")
+
+
+def distributed_records(partition: str) -> set[str]:
     """The record ids the bundle's own SHA256SUMS.txt says this partition holds.
 
-    The manifest ships with the bundle and lists every distributed file, so it is
-    the reference for whether the copy on disk is complete -- a question a class
-    count cannot answer on its own, because a missing record and a mis-parsed
-    label look the same in a total.
+    cardiodb keeps each header file with the digest that manifest declares for it
+    (``source_file.sha256_declared``), so the manifest is still the reference for
+    whether the store's copy is complete -- a question a class count cannot answer
+    on its own, because a missing record and a mis-parsed label look the same in a
+    total.
     """
-    manifest = root / "SHA256SUMS.txt"
-    prefix = f"training/{partition}/"
-    ids = set()
-    for line in manifest.read_text().splitlines():
-        _, _, path = line.partition(" ")
-        path = path.strip()
-        if path.startswith(prefix) and path.endswith(".hea"):
-            ids.add(Path(path).stem)
-    if not ids:
-        raise ValueError(f"{manifest} lists no .hea under {prefix}")
-    return ids
+    listed = distributed_headers(partition)
+    if not listed:
+        raise ValueError(f"the store lists no .hea of {partition} with a declared digest")
+    return listed
 
 
-def completeness(
-    source: str, table: pd.DataFrame, root: Path = CHALLENGE2021_DIR
-) -> dict[str, list[str] | int]:
-    """What this copy of the bundle holds against what the bundle distributes."""
+def completeness(source: str, table: pd.DataFrame) -> dict[str, list[str] | int]:
+    """What the store holds of this source against what the bundle distributes.
+
+    ``n_on_disk`` counts the records the store holds, read from the bundle on disk.
+    """
     on_disk = set(table.index)
     listed: set[str] = set()
     for partition in CHALLENGE_PARTITIONS[source]:
-        listed |= distributed_records(partition, root)
+        listed |= distributed_records(partition)
     missing = sorted(listed - on_disk)
     return {
         "n_distributed": len(listed),

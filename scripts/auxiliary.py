@@ -50,7 +50,7 @@ from numpy.typing import NDArray
 from scipy.stats import norm
 from shift_table import patients_of
 
-from ecs.config import PTBXL_DIR, RESULTS_DIR
+from ecs.config import RESULTS_DIR
 from ecs.conformal import (
     conformal_quantile,
     lac_scores,
@@ -374,7 +374,7 @@ def build(draws: int, bootstrap: int, seed: int) -> dict[str, Any]:
         "sph": dict(np.load(RESULTS_DIR / "external/sph.npz")),
         "acs": dict(np.load(RESULTS_DIR / "external/acs.npz")),
     }
-    patients = np.asarray(patients_of([str(i) for i in corpora["ptbxl"]["ids"]], PTBXL_DIR))
+    patients = np.asarray(patients_of([str(i) for i in corpora["ptbxl"]["ids"]]))
     return {
         "question": (
             "The quantities sections 4 and 5 argue from, computed from the committed "

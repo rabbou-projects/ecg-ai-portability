@@ -43,9 +43,10 @@ import numpy as np
 import pandas as pd
 import torch
 
-from ecs.config import ACS_DIR, EMBEDDINGS_DIR, PTBXL_DIR, SPH_DIR
+from ecs.config import EMBEDDINGS_DIR
 from ecs.encoders import ARMS, PRETRAINING, machine_info
 from ecs.ingest import Corpus, load_acs, load_ptbxl, load_sph
+from ecs.store import acs_table, ptbxl_database, sph_metadata
 
 CHUNK = 200  # records read and embedded before anything is written
 BATCH = 20  # records through the network at once
@@ -55,10 +56,10 @@ CorpusLoader = Callable[[Sequence[str]], Corpus]
 
 def corpus_loaders() -> dict[str, tuple[list[str], CorpusLoader]]:
     """Every corpus: its record ids in a fixed order, and how to load a slice."""
-    database = pd.read_csv(PTBXL_DIR / "ptbxl_database.csv", index_col="ecg_id")
-    metadata = pd.read_csv(SPH_DIR / "metadata.csv")
-    train = pd.read_csv(ACS_DIR / "CSV/train.csv")
-    test = pd.read_csv(ACS_DIR / "CSV/test.csv")
+    database = ptbxl_database()
+    metadata = sph_metadata()
+    train = acs_table("train")
+    test = acs_table("test")
     acs = pd.concat([train, test], ignore_index=True)
     acs_ids = [str(f).removesuffix(".dat") for f in acs["ecg_row_record"]]
     return {

@@ -44,7 +44,7 @@ import numpy as np
 import pandas as pd
 from numpy.typing import NDArray
 
-from ecs.config import ACS_DIR, ACS_LABELLED_SPLIT, PTBXL_DIR, RESULTS_DIR
+from ecs.config import ACS_LABELLED_SPLIT, RESULTS_DIR
 from ecs.conformal import (
     aps_scores_all,
     class_prior,
@@ -61,6 +61,7 @@ from ecs.metrics import (
 )
 from ecs.report import SCORES, estimated_prior, frozen_threshold, spread
 from ecs.splits import patient_split
+from ecs.store import acs_table, ptbxl_database
 
 Array = NDArray[np.float64]
 IntArray = NDArray[np.int_]
@@ -88,7 +89,7 @@ def git_commit() -> str:
 
 def acs_patients(ids: list[str]) -> list[str]:
     """The patient each Chongqing record belongs to, in the order of ``ids``."""
-    table = pd.read_csv(ACS_DIR / ACS_LABELLED_SPLIT)
+    table = acs_table(ACS_LABELLED_SPLIT)
     by_record = {
         str(f).removesuffix(".dat"): str(p)
         for f, p in zip(table["ecg_row_record"], table["Patient_id"], strict=True)
@@ -97,7 +98,7 @@ def acs_patients(ids: list[str]) -> list[str]:
 
 
 def ptbxl_patients(ids: list[str]) -> list[str]:
-    database = pd.read_csv(PTBXL_DIR / "ptbxl_database.csv", index_col="ecg_id")
+    database = ptbxl_database()
     return [str(database.loc[int(i), "patient_id"]) for i in ids]
 
 
