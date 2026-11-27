@@ -13,7 +13,7 @@ Requests:
   the result as Parquet.
 - ``{"op": "tracings", "ids": [...]}``: for each id in order, a header of three
   little-endian int64 (samples, non-finite samples, clipped samples) and then the
-  ``(samples, 12)`` int16 microvolts ``cardiodb.loader.load_many`` reads at 500 Hz in
+  ``(samples, 12)`` little-endian int32 microvolts ``cardiodb.loader.load_many`` reads at 500 Hz in
   the canonical lead order.  An id the store does not hold at 500 Hz gets the
   header ``(NOT_HELD, 0, 0)`` and no samples, and the answer goes on, as the
   publisher's reader went on past a file it could not open.
@@ -29,6 +29,7 @@ from typing import Any
 
 MICROVOLTS_PER_MILLIVOLT = 1000
 RATE_HZ = 500
+WIRE = "<i4"  # int32: cardiodb holds a source past ±32,767 µV in int32
 CHUNK = 5000  # ids registered per waveform-index query
 NOT_HELD = -1  # the sample count written for an id the store does not hold
 
@@ -69,7 +70,7 @@ def _tracings(ids: list[str], out: Any) -> None:
             tracing = next(held)
             if tracing.record_id != record_id or tracing.held_rate_hz != RATE_HZ:
                 raise LookupError(f"{record_id}: the loader answered {tracing.record_id}")
-            microvolts = np.rint(tracing.signal * MICROVOLTS_PER_MILLIVOLT).astype("<i2")
+            microvolts = np.rint(tracing.signal * MICROVOLTS_PER_MILLIVOLT).astype(WIRE)
             nonfinite, clipped = counts[record_id]
             out.write(struct.pack("<qqq", microvolts.shape[0], nonfinite, clipped))
             out.write(np.ascontiguousarray(microvolts).tobytes())

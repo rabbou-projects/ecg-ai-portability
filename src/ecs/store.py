@@ -8,14 +8,16 @@ public and pins numpy 1 for torch 2.2.2.
 
 What the store changes, and how this module keeps the old reading:
 
-- a tracing is int16 microvolts at 500 Hz in the canonical lead order.  PTB-XL,
+- a tracing is whole microvolts at 500 Hz in the canonical lead order, int32 on
+  the bridge's wire, so no sample is cut (cardiodb#142 keeps every sample too).  PTB-XL,
   ACS-ECG and the Challenge partitions are WFDB at 1,000 units per millivolt, so
   ``microvolts / 1000`` is the float ``wfdb.rdrecord`` returned, bit for bit;
   SPH's float16 millivolts are rounded to the nearest microvolt (0.5 µV at most);
 - a record the store does not hold is excluded and counted, not a stop;
-- a non-finite sample is stored as 0 and counted (``waveform.n_nonfinite``), and a
-  sample past int16 is clipped and counted (``n_clipped``).  Such a tracing comes
-  back all NaN, so the chain excludes it as it excluded the publisher's record.
+- a non-finite sample is stored as 0 and counted (``waveform.n_nonfinite``).  Such a
+  tracing comes back all NaN, so the chain excludes it as it excluded the
+  publisher's record.  ``n_clipped`` is read the same way, and since cardiodb#142
+  the store writes it 0 and refuses a sample it cannot hold.
 """
 
 from __future__ import annotations
@@ -56,6 +58,7 @@ __all__ = [
 BRIDGE = Path(__file__).with_name("cardiodb_bridge.py")
 MICROVOLTS_PER_MILLIVOLT = 1000.0
 HEADER = struct.Struct("<qqq")
+WIRE = np.dtype("<i4")  # the bridge's microvolts: int32, as cardiodb holds a wide source
 NOT_HELD = -1  # the bridge's sample count for an id the store does not hold
 
 PTBXL_SOURCE = "physionet/ptb-xl"
@@ -128,8 +131,8 @@ def tracings(
                         LookupError(f"not in the cardiodb store at 500 Hz: {record_id}"),
                     )
                     continue
-                raw = _read_exact(child.stdout, n * N_LEADS * 2)
-                microvolts = np.frombuffer(raw, dtype="<i2").reshape(n, N_LEADS)
+                raw = _read_exact(child.stdout, n * N_LEADS * WIRE.itemsize)
+                microvolts = np.frombuffer(raw, dtype=WIRE).reshape(n, N_LEADS)
                 signal = (microvolts / MICROVOLTS_PER_MILLIVOLT).T.astype(np.float32)
                 if nonfinite or clipped:
                     signal = np.full_like(signal, np.nan)
