@@ -17,6 +17,7 @@ import pytest
 import wfdb
 
 from ecs import store
+from ecs.config import REPO_ROOT as ROOT
 from ecs.config import RESULTS_DIR
 from ecs.ingest import (
     CANONICAL_LEADS,
@@ -258,6 +259,20 @@ class TestPTBXL:
 @pytest.mark.data
 @needs_store
 class TestSPH:
+    def test_the_supplement_states_the_records_the_store_clips(self) -> None:
+        """Supplement S2.1 says how many Shandong tracings a store read excludes for a
+        sample past ±32.767 mV; a store that clips more or fewer would make it false."""
+        clipped = store.query(
+            "SELECT count(*) AS n FROM waveform WHERE rate_hz = 500"
+            f" AND record_id LIKE '{store.SPH_SOURCE}:%' AND n_clipped > 0"
+        )["n"].item()
+        text = (ROOT / "docs/templates/SUPPLEMENT.md").read_text()
+        assert clipped == 88
+        assert (
+            "88 of Shandong's tracings hold such a sample, and a run read from the store"
+            " excludes them, scoring 25,682 rather than 25,770" in text
+        )
+
     def test_record_a00001_is_read_to_the_microvolt_and_a00002_is_cropped(self) -> None:
         """SPH ships float16 millivolts; the store holds them rounded to the microvolt.
 
