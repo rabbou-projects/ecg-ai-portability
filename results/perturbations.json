@@ -8,12 +8,12 @@
   "n_positive": 550,
   "torch_threads": 4,
   "clean_matches_published_scores": {
-    "largest_absolute_difference": 1.1920928955078125e-07,
+    "largest_absolute_difference": 2.980232238769531e-07,
     "tolerance": 1e-06,
     "passed": true
   },
   "provenance": {
-    "commit": "4aa537b77521f4f66c8dde36d8e5219f432e05df",
+    "commit": "39937852f0dbe5c1357844542f9a198c7e520f09",
     "producers": {
       "scripts/perturbations.py": "b1e23227a9dd69e0458c11ecfbf4c583fea272adfe158ff7896c207285501105",
       "scripts/score_external.py": "c276222c4ceda1585e201d387e04e94fc759e4988cb72852cd8215011a7d9770",
@@ -24,7 +24,7 @@
       "src/ecs/splits.py": "17f1d2fea5970c37b989ad0df925b3d19f355012bfca02aed6983ce142b5a946"
     }
   },
-  "seconds": 194.6,
+  "seconds": 2332.3,
   "conditions": {
     "clean": {
       "description": "the tracings as recorded; the row that must reproduce results/baseline/scores.npz",
@@ -81,7 +81,7 @@
             "n_draws": 200
           },
           "coverage_non_mi": {
-            "mean": 0.9547,
+            "mean": 0.9546,
             "sd": 0.0086,
             "n_draws": 200
           },
